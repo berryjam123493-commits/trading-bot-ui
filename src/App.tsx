@@ -11,6 +11,7 @@ import { BotDetail } from "./components/BotDetail";
 import { Backtesting } from "./components/Backtesting";
 import { AppSettings } from "./components/AppSettings";
 import { Help } from "./components/Help";
+import { PortfolioDashboard } from "./components/PortfolioDashboard";
 import { DeviceFrame } from "./components/DeviceFrame";
 
 const USER_NAME = "승재";
@@ -42,7 +43,7 @@ export default function App() {
 
 function AppInner() {
   const [deviceView, setDeviceView] = useState<DeviceView>("desktop");
-  const [mainTab, setMainTab] = useState<MainTab>("bots");
+  const [mainTab, setMainTab] = useState<MainTab>("dashboard");
   const [bots, setBots] = useState<Bot[]>(mockBots);
   const sortedBots = useMemo(() => sortBots(bots), [bots]);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(
@@ -133,6 +134,9 @@ def on_bar(symbol, history):
               />
             )}
             <main className="flex-1 flex flex-col min-w-0">
+              {mainTab === "dashboard" && (
+                <PortfolioDashboard bots={bots} userName={USER_NAME} />
+              )}
               {mainTab === "bots" && selectedBot && (
                 <BotDetail bot={selectedBot} onUpdate={handleUpdateBot} />
               )}

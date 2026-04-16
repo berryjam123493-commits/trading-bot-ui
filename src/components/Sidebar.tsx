@@ -8,6 +8,7 @@ import {
   X,
   Settings as SettingsIcon,
   HelpCircle,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "../i18n/context";
@@ -44,6 +45,17 @@ export function Sidebar({
   if (!isMobile && !open) {
     return (
       <aside className="w-12 shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-2 gap-1 z-10">
+        <button
+          onClick={() => onMainTabChange("dashboard")}
+          title={t("tabDashboard")}
+          className={`w-9 h-9 rounded-md flex items-center justify-center ${
+            mainTab === "dashboard"
+              ? "bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
+              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+          }`}
+        >
+          <LayoutDashboard size={18} />
+        </button>
         <button
           onClick={() => onMainTabChange("bots")}
           title={t("tabBots")}
@@ -119,6 +131,20 @@ export function Sidebar({
           </button>
         </div>
       )}
+
+      {/* 대시보드 탭 */}
+      <button
+        onClick={() => onMainTabChange("dashboard")}
+        className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-left border-b border-slate-100 dark:border-slate-700 ${
+          mainTab === "dashboard"
+            ? "bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
+            : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+        }`}
+      >
+        <span className="w-[14px]" />
+        <LayoutDashboard size={16} />
+        <span>{t("tabDashboard")}</span>
+      </button>
 
       {/* 봇 탭 */}
       <button
