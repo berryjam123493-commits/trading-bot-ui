@@ -1,0 +1,324 @@
+import type { Language } from "../types";
+
+export const translations = {
+  ko: {
+    // 헤더
+    appTitle: "Trading Bot Studio",
+    greeting: "안녕하세요",
+    desktop: "PC",
+    mobile: "모바일",
+    collapseSidebar: "사이드바 접기",
+    expandSidebar: "사이드바 펼치기",
+
+    // 사이드바
+    tabBots: "자동매매 봇",
+    tabBacktest: "백테스팅",
+    addBot: "봇 추가",
+    renameBot: "봇 이름 수정",
+    clickToEditName: "클릭해서 이름 수정",
+
+    // 상세 탭
+    dashboard: "대시보드",
+    botSettings: "봇 설정",
+    code: "코드",
+
+    // 대시보드
+    equityCurve: "수익률 추이",
+    tradeLog: "매매 로그",
+    timeRange: "기간",
+    last7d: "7일",
+    last30d: "30일",
+    last90d: "90일",
+    all: "전체",
+    totalReturn: "총 수익률",
+    totalTrades: "거래 횟수",
+    winRate: "승률",
+    currentEquity: "현재 평가액",
+    noTrades: "거래 내역 없음",
+
+    // 봇 설정
+    mode: "매매 모드",
+    paperMode: "모의투자",
+    liveMode: "실거래",
+    pauseBot: "일시정지",
+    resumeBot: "재개",
+    running: "실행 중",
+    paused: "일시정지됨",
+    buyConditions: "매수 조건 파라미터",
+    sellConditions: "매도 조건 파라미터",
+    noParamsDetected:
+      "감지된 파라미터가 없습니다. 코드에 '# === BUY PARAMS ===' 또는 '# === SELL PARAMS ===' 주석을 추가하고 그 아래에 '변수명 = 숫자' 형태로 정의하세요.",
+    saveParams: "파라미터 저장",
+    paramsSaved: "저장됨",
+
+    // 코드 탭
+    codeEditor: "코드 편집기",
+    undo: "되돌리기",
+    redo: "다시 실행",
+    runDebug: "디버그 실행",
+    debugOk: "문법 검증 통과",
+    debugErrors: "오류",
+    noErrors: "오류 없음",
+
+    // 백테스팅
+    backtestTitle: "백테스팅",
+    loadFromBot: "기존 봇 불러오기",
+    newCode: "새 코드",
+    runBacktest: "백테스트 실행",
+    askClaude: "Claude AI에게 물어보기",
+    askClaudeHint: "예: 이 전략에 RSI 필터를 추가해줘",
+    send: "보내기",
+    claudeComingSoon: "(준비 중) API 키 연결 후 동작합니다",
+    startDate: "시작일",
+    endDate: "종료일",
+    symbols: "종목",
+    initialCash: "초기 자본",
+    result: "결과",
+
+    // 백테스팅 — 데이터 & 검증
+    fetchingData: "웹에서 시세 데이터 가져오는 중…",
+    validatingData: "로컬 검증 데이터와 대조 중…",
+    runningBacktest: "백테스트 실행 중…",
+    dataFetched: "시세 로드 완료",
+    validationOk: "가격 일치 확인됨",
+    validationFailed: "데이터 검증 실패",
+    noOverlap:
+      "백테스트 기간이 로컬 검증 데이터 범위와 겹치지 않습니다. 로컬 검증 데이터 범위: {range}. 이 범위 안에 겹치는 기간을 설정해주세요.",
+    priceMismatch:
+      "{symbol}: 로컬 데이터와 웹 데이터의 종가가 {count}개 날짜에서 일치하지 않습니다 (허용 오차 {tol}%).",
+    noLocalData:
+      "{symbol}: 로컬 검증 데이터가 없습니다. src/data/validationData.ts 에 해당 종목 데이터를 추가하세요.",
+    fetchFailed: "{symbol}: 시세 데이터를 가져오지 못했습니다 — {detail}",
+    validationInfo:
+      "백테스팅 실행 시 웹에서 최신 시세를 가져와 로컬 10년치 검증 데이터와 대조합니다. 일치 시에만 실행됩니다.",
+    localDataRange: "로컬 검증 데이터 범위",
+    overlapDays: "겹치는 거래일",
+    fetchedBars: "수신 캔들 수",
+
+    // 앱 설정
+    appSettings: "앱 설정",
+    generalSettings: "일반",
+    validationDataTab: "검증 데이터",
+    language: "언어",
+    languageHelp: "앱 표시 언어",
+    theme: "테마",
+    themeHelp: "화면 색상 모드",
+    lightMode: "라이트",
+    darkMode: "다크",
+
+    // 검증 데이터 매니저
+    validationDataTitle: "검증용 주식 데이터",
+    validationDataHelp:
+      "(1) 웹에서 받아온 시세와의 더블 크로스 검증, (2) 데이터 소스 장애 시 오프라인 백테스트 폴백용. 티커별로 CSV 파일을 직접 업로드할 수 있습니다.",
+    syntheticFallback:
+      "업로드하지 않은 티커는 내장 샘플 데이터({range}) 로 임시 대체됩니다.",
+    addTickerManually: "티커 직접 추가",
+    add: "추가",
+    detectedFromBots: "봇 코드에서 감지됨",
+    tickerList: "티커 목록",
+    noTickersYet: "등록된 티커가 없습니다.",
+    upload: "업로드",
+    uploadCsv: "CSV 업로드",
+    clearUploadedData: "업로드 데이터 삭제",
+    removeTicker: "티커 제거",
+    csvUploaded:
+      "{symbol} — {rows} 행 업로드됨 ({range})",
+    uploadCleared: "{symbol} 업로드 데이터가 삭제되었습니다.",
+    tickerAdded: "{symbol} 티커가 추가되었습니다.",
+    tickerRemoved: "{symbol} 티커가 제거되었습니다.",
+    invalidTickerFormat:
+      "티커 형식이 올바르지 않습니다. 예: AAPL, BRK.B (대문자 1~5자, 선택적 .서픽스)",
+
+    // 거래 로그 컬럼
+    tlTime: "일시",
+    tlSide: "매수/매도",
+    tlSymbol: "종목",
+    tlPrice: "체결가",
+    tlQty: "수량",
+    tlCash: "잔여현금",
+    tlCashRatio: "현금 비율",
+    tlReturn: "현재 수익률",
+
+    // 공통
+    paper: "paper",
+    live: "LIVE",
+    menu: "메뉴",
+
+    // 도움말 탭
+    tabHelp: "도움말",
+    helpSearchPlaceholder: "도움말 검색…  (예: RSI, 골든 크로스, 볼린저)",
+    helpHint: "주요 용어를 검색하거나 전체 목록을 열어볼 수 있습니다.",
+    showKeywords: "키워드 목록 열기",
+    hideKeywords: "키워드 목록 닫기",
+    noHelpResults: "검색 결과가 없습니다.",
+    allKeywords: "전체 키워드",
+    summaryLabel: "요약",
+    whyLabel: "왜 필요한가?",
+    backToHelpList: "← 도움말 목록으로",
+
+    // 도움말 카테고리
+    catBot: "봇/자동매매",
+    catIndicator: "기술적 지표",
+    catStrategy: "전략/패턴",
+    catBacktest: "백테스팅/성과",
+    catMarket: "시장",
+    catData: "데이터/포맷",
+  },
+  en: {
+    appTitle: "Trading Bot Studio",
+    greeting: "Hi",
+    desktop: "Desktop",
+    mobile: "Mobile",
+    collapseSidebar: "Collapse sidebar",
+    expandSidebar: "Expand sidebar",
+
+    tabBots: "Trading Bots",
+    tabBacktest: "Backtesting",
+    addBot: "Add Bot",
+    renameBot: "Rename bot",
+    clickToEditName: "Click to edit name",
+
+    dashboard: "Dashboard",
+    botSettings: "Bot Settings",
+    code: "Code",
+
+    equityCurve: "Equity Curve",
+    tradeLog: "Trade Log",
+    timeRange: "Range",
+    last7d: "7D",
+    last30d: "30D",
+    last90d: "90D",
+    all: "All",
+    totalReturn: "Total Return",
+    totalTrades: "Total Trades",
+    winRate: "Win Rate",
+    currentEquity: "Current Equity",
+    noTrades: "No trades yet",
+
+    mode: "Trading Mode",
+    paperMode: "Paper",
+    liveMode: "Live",
+    pauseBot: "Pause",
+    resumeBot: "Resume",
+    running: "Running",
+    paused: "Paused",
+    buyConditions: "Buy Condition Parameters",
+    sellConditions: "Sell Condition Parameters",
+    noParamsDetected:
+      "No parameters detected. Add '# === BUY PARAMS ===' or '# === SELL PARAMS ===' comments in your code, then define 'NAME = number' below.",
+    saveParams: "Save Parameters",
+    paramsSaved: "Saved",
+
+    codeEditor: "Code Editor",
+    undo: "Undo",
+    redo: "Redo",
+    runDebug: "Run Debug",
+    debugOk: "Syntax OK",
+    debugErrors: "Errors",
+    noErrors: "No errors",
+
+    backtestTitle: "Backtesting",
+    loadFromBot: "Load from Bot",
+    newCode: "New Code",
+    runBacktest: "Run Backtest",
+    askClaude: "Ask Claude AI",
+    askClaudeHint: "e.g. Add an RSI filter to this strategy",
+    send: "Send",
+    claudeComingSoon: "(Coming soon) Connect API key to enable",
+    startDate: "Start",
+    endDate: "End",
+    symbols: "Symbols",
+    initialCash: "Initial Cash",
+    result: "Result",
+
+    fetchingData: "Fetching market data from the web…",
+    validatingData: "Validating against local dataset…",
+    runningBacktest: "Running backtest…",
+    dataFetched: "Market data loaded",
+    validationOk: "Prices matched",
+    validationFailed: "Data validation failed",
+    noOverlap:
+      "Backtest period does not overlap with the local validation dataset. Local range: {range}. Please pick a period inside this range.",
+    priceMismatch:
+      "{symbol}: close prices differ from local data on {count} dates (tolerance {tol}%).",
+    noLocalData:
+      "{symbol}: no local validation data. Add entries in src/data/validationData.ts.",
+    fetchFailed: "{symbol}: could not fetch market data — {detail}",
+    validationInfo:
+      "Each run fetches fresh market data and cross-checks against your local 10-year dataset. Backtest runs only when prices match.",
+    localDataRange: "Local validation range",
+    overlapDays: "Overlapping days",
+    fetchedBars: "Fetched bars",
+
+    appSettings: "App Settings",
+    generalSettings: "General",
+    validationDataTab: "Validation Data",
+    language: "Language",
+    languageHelp: "Display language for the app",
+    theme: "Theme",
+    themeHelp: "Color mode",
+    lightMode: "Light",
+    darkMode: "Dark",
+
+    validationDataTitle: "Validation stock data",
+    validationDataHelp:
+      "(1) Cross-checks web-fetched market data, (2) acts as an offline backtest fallback when data sources fail. Upload a CSV per ticker.",
+    syntheticFallback:
+      "Tickers without uploads fall back to the built-in sample dataset ({range}).",
+    addTickerManually: "Add ticker manually",
+    add: "Add",
+    detectedFromBots: "Detected from bots",
+    tickerList: "Tickers",
+    noTickersYet: "No tickers yet.",
+    upload: "Upload",
+    uploadCsv: "Upload CSV",
+    clearUploadedData: "Clear uploaded data",
+    removeTicker: "Remove ticker",
+    csvUploaded:
+      "{symbol} — {rows} rows uploaded ({range})",
+    uploadCleared: "{symbol} uploaded data cleared.",
+    tickerAdded: "Ticker {symbol} added.",
+    tickerRemoved: "Ticker {symbol} removed.",
+    invalidTickerFormat:
+      "Invalid ticker format. e.g. AAPL, BRK.B (1–5 uppercase letters, optional .suffix)",
+
+    tlTime: "Time",
+    tlSide: "Side",
+    tlSymbol: "Symbol",
+    tlPrice: "Price",
+    tlQty: "Qty",
+    tlCash: "Cash",
+    tlCashRatio: "Cash %",
+    tlReturn: "Return %",
+
+    paper: "paper",
+    live: "LIVE",
+    menu: "Menu",
+
+    // Help tab
+    tabHelp: "Help",
+    helpSearchPlaceholder: "Search help…  (e.g. RSI, golden cross, bollinger)",
+    helpHint: "Search for a term, or open the full keyword list.",
+    showKeywords: "Show keyword list",
+    hideKeywords: "Hide keyword list",
+    noHelpResults: "No matching results.",
+    allKeywords: "All keywords",
+    summaryLabel: "Summary",
+    whyLabel: "Why it matters",
+    backToHelpList: "← Back to help list",
+
+    // Help categories
+    catBot: "Bots & Automation",
+    catIndicator: "Technical Indicators",
+    catStrategy: "Strategy & Patterns",
+    catBacktest: "Backtesting & Metrics",
+    catMarket: "Market Basics",
+    catData: "Data & Format",
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations["ko"];
+
+export function t(lang: Language, key: TranslationKey): string {
+  return translations[lang][key] ?? key;
+}

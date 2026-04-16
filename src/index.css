@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", "Pretendard", system-ui, -apple-system, sans-serif;
+}
+
+/* 스크롤바 심플하게 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* 모바일 프레임 (iPhone 14 Pro Max 기준 430px) */
+.device-mobile {
+  width: 100%;
+  max-width: 430px;
+  height: 860px;
+  margin: 24px auto;
+  border: 12px solid #1e293b;
+  border-radius: 44px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  background: white;
+  position: relative;
+}
+
+.device-desktop {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* 모바일 드로어 슬라이드 애니메이션 */
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: slide-in-left 180ms ease-out;
+}
+
+/* 모바일 프레임 내 좀 더 여유있는 기본 간격 */
+.device-mobile .mobile-dense {
+  font-size: 13px;
+  line-height: 1.4;
+}
