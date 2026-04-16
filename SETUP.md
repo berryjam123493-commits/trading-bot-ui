@@ -1,4 +1,4 @@
-# Trading Bot Studio - 설치/실행 가이드
+# Auto Trade Studio - 설치/실행 가이드
 
 ## 사전 준비: Node.js 설치
 
@@ -16,7 +16,7 @@
 
 ## 바탕화면 바로가기 만들기
 
-`frontend/create-desktop-shortcut.bat` 더블클릭 → 바탕화면에 `Trading Bot Studio.lnk` 가 생깁니다.
+`frontend/create-desktop-shortcut.bat` 더블클릭 → 바탕화면에 `Auto Trade Studio.lnk` 가 생깁니다.
 이후부터는 바탕화면 바로가기 더블클릭으로 바로 실행됩니다.
 
 ## 종료

@@ -1,11 +1,11 @@
 @echo off
-REM Trading Bot Studio 중지 스크립트
+REM Auto Trade Studio 중지 스크립트
 REM - 숨김 실행 중인 dev 서버(node.exe)를 종료한다.
 REM - 5173 포트를 점유한 프로세스를 찾아서 종료.
 
 setlocal enabledelayedexpansion
 
-echo [Trading Bot Studio] dev 서버 종료 중...
+echo [Auto Trade Studio] dev 서버 종료 중...
 
 REM 5173 포트 LISTEN 중인 PID 찾기
 set "FOUND=0"

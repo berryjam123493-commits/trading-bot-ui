@@ -82,7 +82,7 @@ export function Header({
             isMobile ? "text-sm" : ""
           }`}
         >
-          {isMobile ? "Trading" : t("appTitle")}
+          {isMobile ? "Auto" : t("appTitle")}
         </h1>
       </div>
 

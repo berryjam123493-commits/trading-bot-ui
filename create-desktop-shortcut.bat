@@ -1,11 +1,14 @@
 @echo off
-REM 바탕화면에 "Trading Bot Studio" 바로가기를 만든다.
+REM 바탕화면에 "Auto Trade Studio" 바로가기를 만든다.
 REM PowerShell 로 WScript.Shell COM 객체를 사용.
 
 setlocal
 set "SCRIPT_DIR=%~dp0"
-set "SHORTCUT_NAME=Trading Bot Studio.lnk"
-set "STOP_SHORTCUT_NAME=Trading Bot Studio (Stop).lnk"
+set "SHORTCUT_NAME=Auto Trade Studio.lnk"
+set "STOP_SHORTCUT_NAME=Auto Trade Studio (Stop).lnk"
+REM 옛 바로가기 (이름 변경 전) 가 남아있으면 정리
+set "OLD_SHORTCUT_NAME=Trading Bot Studio.lnk"
+set "OLD_STOP_SHORTCUT_NAME=Trading Bot Studio (Stop).lnk"
 set "DESKTOP=%USERPROFILE%\Desktop"
 REM wscript.exe 로 VBS 를 실행하면 cmd 창/작업표시줄 아이콘이 뜨지 않는다.
 set "WSCRIPT=%WINDIR%\System32\wscript.exe"
@@ -15,19 +18,23 @@ set "ICON=%SCRIPT_DIR%public\app-icon.ico"
 
 echo 바탕화면 바로가기 생성 중...
 
+REM 옛 이름의 바로가기가 남아있으면 제거 (이름 변경 전 버전)
+if exist "%DESKTOP%\%OLD_SHORTCUT_NAME%" del "%DESKTOP%\%OLD_SHORTCUT_NAME%" >nul 2>&1
+if exist "%DESKTOP%\%OLD_STOP_SHORTCUT_NAME%" del "%DESKTOP%\%OLD_STOP_SHORTCUT_NAME%" >nul 2>&1
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ws = New-Object -ComObject WScript.Shell;" ^
     "$sc = $ws.CreateShortcut('%DESKTOP%\%SHORTCUT_NAME%');" ^
     "$sc.TargetPath = '%WSCRIPT%';" ^
     "$sc.Arguments = '\"%TARGET%\"';" ^
     "$sc.WorkingDirectory = '%SCRIPT_DIR%';" ^
-    "$sc.Description = 'Trading Bot Studio - 자동매매 봇 스튜디오';" ^
+    "$sc.Description = 'Auto Trade Studio - 자동매매 봇 스튜디오';" ^
     "$sc.IconLocation = '%ICON%';" ^
     "$sc.Save();" ^
     "$sc2 = $ws.CreateShortcut('%DESKTOP%\%STOP_SHORTCUT_NAME%');" ^
     "$sc2.TargetPath = '%STOP_TARGET%';" ^
     "$sc2.WorkingDirectory = '%SCRIPT_DIR%';" ^
-    "$sc2.Description = 'Trading Bot Studio 종료';" ^
+    "$sc2.Description = 'Auto Trade Studio 종료';" ^
     "$sc2.IconLocation = '%ICON%';" ^
     "$sc2.Save();"
 

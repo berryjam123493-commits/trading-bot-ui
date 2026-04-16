@@ -1,12 +1,12 @@
 @echo off
-REM Trading Bot Studio 실행 스크립트
+REM Auto Trade Studio 실행 스크립트
 REM - 최초 1회는 npm install 자동 실행
 REM - 그 다음부터는 바로 dev 서버 시작 + 브라우저 오픈
 
 cd /d "%~dp0"
 
 if not exist "node_modules\" (
-    echo [Trading Bot Studio] 처음 실행입니다. 의존성 설치 중... 잠시만 기다려주세요.
+    echo [Auto Trade Studio] 처음 실행입니다. 의존성 설치 중... 잠시만 기다려주세요.
     call npm install
     if errorlevel 1 (
         echo.
@@ -17,5 +17,5 @@ if not exist "node_modules\" (
     )
 )
 
-echo [Trading Bot Studio] 개발 서버 시작 중...
+echo [Auto Trade Studio] 개발 서버 시작 중...
 call npm run dev

@@ -3,7 +3,7 @@ import type { Language } from "../types";
 export const translations = {
   ko: {
     // 헤더
-    appTitle: "Trading Bot Studio",
+    appTitle: "Auto Trade Studio",
     greeting: "안녕하세요",
     desktop: "PC",
     mobile: "모바일",
@@ -198,7 +198,7 @@ export const translations = {
     catData: "데이터/포맷",
   },
   en: {
-    appTitle: "Trading Bot Studio",
+    appTitle: "Auto Trade Studio",
     greeting: "Hi",
     desktop: "Desktop",
     mobile: "Mobile",
