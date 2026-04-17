@@ -42,7 +42,10 @@ export default function App() {
 }
 
 function AppInner() {
-  const [deviceView, setDeviceView] = useState<DeviceView>("desktop");
+  // 실제 모바일 기기 감지: 좁은 뷰포트면 자동으로 모바일 뷰로 시작
+  const [deviceView, setDeviceView] = useState<DeviceView>(() =>
+    window.matchMedia?.("(max-width: 767px)").matches ? "mobile" : "desktop"
+  );
   const [mainTab, setMainTab] = useState<MainTab>("dashboard");
   const [bots, setBots] = useState<Bot[]>(mockBots);
   const sortedBots = useMemo(() => sortBots(bots), [bots]);

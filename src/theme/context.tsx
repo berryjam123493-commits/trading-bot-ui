@@ -19,10 +19,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
-    // 시스템 선호도 따라가기
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    // 기본값: 라이트 모드 (시스템 다크 설정 무시)
+    return "light";
   });
 
   useEffect(() => {
