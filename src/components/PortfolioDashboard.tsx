@@ -34,6 +34,12 @@ import {
   type PortfolioSnapshot,
 } from "../utils/portfolio";
 import { Abbr } from "./Abbr";
+import {
+  useAssetColors,
+  CASH_KEY,
+  CASH_COLOR,
+} from "../data/assetColors";
+import { ColorPickerPopover } from "./ColorPickerPopover";
 
 interface Props {
   bots: Bot[];
@@ -75,6 +81,13 @@ export function PortfolioDashboard({ bots, userName }: Props) {
     () => (asset === "all" ? null : computeAssetDetail(bots, asset)),
     [bots, asset]
   );
+
+  // 현재 보유 종목 기반으로 종목별 색상 배정 (포트폴리오에서 사라지기 전까지 고정)
+  const currentSymbols = useMemo(
+    () => portfolio.holdings.map((h) => h.symbol),
+    [portfolio.holdings]
+  );
+  const { getColor, setColor } = useAssetColors(currentSymbols);
 
   const toggleOverlay = (o: Overlay) => {
     setOverlays((prev) => {
@@ -171,6 +184,8 @@ export function PortfolioDashboard({ bots, userName }: Props) {
             portfolio={portfolio}
             assetDetail={assetDetail}
             isMobile={isMobile}
+            getColor={getColor}
+            setColor={setColor}
           />
         </div>
       </div>
@@ -784,23 +799,42 @@ function AssetBreakdownPanel({
   portfolio,
   assetDetail,
   isMobile,
+  getColor,
+  setColor,
 }: {
   asset: AssetSelection;
   portfolio: PortfolioSnapshot;
   assetDetail: AssetDetail | null;
   isMobile: boolean;
+  getColor: (symbol: string) => string;
+  setColor: (symbol: string, color: string) => void;
 }) {
   const { t } = useI18n();
   const barHeight = isMobile ? 180 : 210;
   const pieHeight = isMobile ? 180 : 220;
 
+  // 색상 피커 상태 (종목 티커 클릭 시 표시)
+  const [pickerFor, setPickerFor] = useState<
+    { symbol: string; anchor: HTMLElement } | null
+  >(null);
+  const openPicker = (symbol: string, anchor: HTMLElement) => {
+    if (symbol === CASH_KEY) return; // 현금은 고정색
+    setPickerFor({ symbol, anchor });
+  };
+
   if (asset === "all") {
     // 종합 뷰: 종목별 평가액 바 + 자산 비중 파이
     const barData = [
-      ...portfolio.holdings.map((h) => ({ name: h.symbol, value: h.currentValue })),
-      { name: t("cashLabel"), value: portfolio.cash },
+      ...portfolio.holdings.map((h) => ({
+        name: h.symbol,
+        key: h.symbol,
+        value: h.currentValue,
+      })),
+      { name: t("cashLabel"), key: CASH_KEY, value: portfolio.cash },
     ];
     const pieData = barData.filter((d) => d.value > 0);
+
+    const fillFor = (key: string) => (key === CASH_KEY ? CASH_COLOR : getColor(key));
 
     const barChart = (
       <BarChart data={barData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -809,7 +843,19 @@ function AssetBreakdownPanel({
           stroke="currentColor"
           className="text-slate-200 dark:text-slate-700"
         />
-        <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} />
+        <XAxis
+          dataKey="name"
+          tick={(props) => (
+            <ClickableAxisTick
+              {...props}
+              payload={props.payload}
+              items={barData}
+              onClick={openPicker}
+            />
+          )}
+          stroke="#94a3b8"
+          interval={0}
+        />
         <YAxis
           tick={{ fontSize: 9 }}
           stroke="#94a3b8"
@@ -821,8 +867,8 @@ function AssetBreakdownPanel({
           formatter={(v: number) => `$${fmtMoney(v)}`}
         />
         <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-          {barData.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+          {barData.map((d) => (
+            <Cell key={d.key} fill={fillFor(d.key)} />
           ))}
         </Bar>
       </BarChart>
@@ -840,10 +886,10 @@ function AssetBreakdownPanel({
           label={(entry) => entry.name}
           labelLine={false}
         >
-          {pieData.map((_, i) => (
+          {pieData.map((d) => (
             <Cell
-              key={i}
-              fill={COLORS[i % COLORS.length]}
+              key={d.key}
+              fill={fillFor(d.key)}
               stroke="rgba(255,255,255,0.4)"
             />
           ))}
@@ -852,19 +898,42 @@ function AssetBreakdownPanel({
           contentStyle={{ fontSize: 11, borderRadius: 8 }}
           formatter={(v: number) => `$${fmtMoney(v)}`}
         />
-        <Legend wrapperStyle={{ fontSize: 10 }} />
+        <Legend
+          wrapperStyle={{ fontSize: 10 }}
+          content={(props) => (
+            <ClickableLegend
+              {...props}
+              items={pieData}
+              fillFor={fillFor}
+              onClick={openPicker}
+            />
+          )}
+        />
       </PieChart>
     );
+
+    const pickerEl = pickerFor ? (
+      <ColorPickerPopover
+        anchor={pickerFor.anchor}
+        current={getColor(pickerFor.symbol)}
+        title={pickerFor.symbol}
+        onPick={(c) => setColor(pickerFor.symbol, c)}
+        onClose={() => setPickerFor(null)}
+      />
+    ) : null;
 
     // 모바일: 한 카드 안에서 바/파이 토글
     if (isMobile) {
       return (
-        <AllocationMergedCard
-          barChart={barChart}
-          pieChart={pieChart}
-          barHeight={barHeight}
-          pieHeight={pieHeight}
-        />
+        <>
+          <AllocationMergedCard
+            barChart={barChart}
+            pieChart={pieChart}
+            barHeight={barHeight}
+            pieHeight={pieHeight}
+          />
+          {pickerEl}
+        </>
       );
     }
 
@@ -877,6 +946,7 @@ function AssetBreakdownPanel({
         <BreakdownCard title={t("assetAllocationChart")} height={pieHeight}>
           {pieChart}
         </BreakdownCard>
+        {pickerEl}
       </>
     );
   }
@@ -951,6 +1021,90 @@ function AssetBreakdownPanel({
         </BarChart>
       </BreakdownCard>
     </>
+  );
+}
+
+/**
+ * 바 차트 X축의 종목 라벨. 클릭하면 색상 피커가 열린다 (현금 제외).
+ */
+function ClickableAxisTick(props: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  items: { name: string; key: string }[];
+  onClick: (symbol: string, anchor: HTMLElement) => void;
+}) {
+  const { x = 0, y = 0, payload, items, onClick } = props;
+  const name = payload?.value ?? "";
+  const matched = items.find((it) => it.name === name);
+  const key = matched?.key ?? name;
+  const isCash = key === CASH_KEY;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={12}
+        textAnchor="middle"
+        fontSize={9}
+        className={
+          isCash
+            ? "fill-slate-500 dark:fill-slate-400"
+            : "fill-slate-600 dark:fill-slate-300 cursor-pointer hover:fill-brand-600 dark:hover:fill-brand-400"
+        }
+        style={{
+          textDecoration: isCash ? "none" : "underline",
+          textDecorationStyle: "dotted",
+          textUnderlineOffset: 2,
+        }}
+        onClick={(e) => {
+          if (isCash) return;
+          onClick(key, e.currentTarget as unknown as HTMLElement);
+        }}
+      >
+        {name}
+      </text>
+    </g>
+  );
+}
+
+/**
+ * 파이 차트의 커스텀 범례. 색상 스와치 + 라벨. 라벨 클릭 시 색상 피커.
+ */
+function ClickableLegend(props: {
+  items: { name: string; key: string }[];
+  fillFor: (key: string) => string;
+  onClick: (symbol: string, anchor: HTMLElement) => void;
+}) {
+  const { items, fillFor, onClick } = props;
+  return (
+    <ul className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] mt-1">
+      {items.map((it) => {
+        const isCash = it.key === CASH_KEY;
+        return (
+          <li key={it.key} className="inline-flex items-center gap-1">
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-sm"
+              style={{ backgroundColor: fillFor(it.key) }}
+            />
+            <button
+              type="button"
+              onClick={(e) =>
+                !isCash && onClick(it.key, e.currentTarget as HTMLElement)
+              }
+              disabled={isCash}
+              className={
+                isCash
+                  ? "text-slate-500 dark:text-slate-400 cursor-default"
+                  : "text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 cursor-pointer underline decoration-dotted underline-offset-2"
+              }
+            >
+              {it.name}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
