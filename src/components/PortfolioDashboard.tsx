@@ -19,7 +19,6 @@ import {
   LineChart as LineIcon,
   Minus,
   TrendingUp,
-  Ruler,
   Sigma,
   BarChart3,
 } from "lucide-react";
@@ -44,7 +43,7 @@ interface Props {
  * 메인 시계열 차트에 겹쳐 표시할 오버레이들. 전부 다 껏다 켰다 토글 가능 & 중복 선택 가능.
  * (바 그래프도 다른 옵션과 동일하게 토글)
  */
-type Overlay = "bar" | "line" | "dashed" | "area" | "linear" | "distance";
+type Overlay = "bar" | "line" | "dashed" | "area" | "regression";
 type AssetSelection = "all" | string;
 type TimeUnit = "day" | "week" | "month" | "year";
 
@@ -418,8 +417,7 @@ function OverlayToggles({
     { key: "line", label: t("chartLine"), icon: <LineIcon size={12} />, title: t("chartLine") },
     { key: "dashed", label: t("chartDashed"), icon: <Minus size={12} />, title: t("chartDashed") },
     { key: "area", label: t("chartArea"), icon: <TrendingUp size={12} />, title: t("chartArea") },
-    { key: "linear", label: t("overlayLinear"), icon: <Ruler size={12} />, title: t("overlayLinearFull") },
-    { key: "distance", label: t("overlayDistance"), icon: <Sigma size={12} />, title: t("overlayDistanceFull") },
+    { key: "regression", label: t("overlayRegression"), icon: <Sigma size={12} />, title: t("overlayRegressionFull") },
   ];
   return (
     <div className="flex flex-col gap-1">
@@ -464,7 +462,7 @@ interface TooltipPayloadItem {
   payload?: TimeRow;
 }
 
-type TimeRow = TimePoint & { linear: number };
+type TimeRow = TimePoint & { regression: number };
 
 function MainTimeSeriesChart({
   title,
@@ -482,15 +480,13 @@ function MainTimeSeriesChart({
   const { t } = useI18n();
   const height = isMobile ? 260 : 340;
 
-  // 각 포인트에 linear 값을 덧붙임
+  // 각 포인트에 최소제곱 선형회귀 예측값을 덧붙임
   const enriched: TimeRow[] = useMemo(() => {
     if (data.length === 0) return [];
-    const firstY = data[0].equity;
-    const lastY = data[data.length - 1].equity;
-    const denom = Math.max(1, data.length - 1);
+    const { slope, intercept } = linearRegression(data.map((p) => p.equity));
     return data.map((p, i) => ({
       ...p,
-      linear: firstY + ((lastY - firstY) * i) / denom,
+      regression: slope * i + intercept,
     }));
   }, [data]);
 
@@ -609,18 +605,30 @@ function MainTimeSeriesChart({
               />
             )}
 
-            {/* 오버레이: 기준선 (start → end linear) */}
-            {overlays.has("linear") && (
-              <Line
-                type="linear"
-                dataKey="linear"
-                stroke="#f59e0b"
-                strokeWidth={1.8}
-                strokeDasharray="2 3"
-                dot={false}
-                activeDot={false}
-                isAnimationActive={false}
-              />
+            {/* 오버레이: 선형 회귀 — 검정 선 + 빨강 데이터 점 */}
+            {overlays.has("regression") && (
+              <>
+                {/* 회귀선 (검정, 실선) */}
+                <Line
+                  type="linear"
+                  dataKey="regression"
+                  stroke="#000000"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={false}
+                />
+                {/* 실제 데이터 점 (빨강) — 선은 투명, 점만 표시 */}
+                <Line
+                  type="linear"
+                  dataKey="equity"
+                  stroke="transparent"
+                  dot={{ r: 3.5, fill: "#ef4444", stroke: "#ef4444" }}
+                  activeDot={{ r: 6, fill: "#ef4444", stroke: "#ffffff", strokeWidth: 2 }}
+                  isAnimationActive={false}
+                  legendType="none"
+                />
+              </>
             )}
           </ComposedChart>
         </ResponsiveContainer>
@@ -646,17 +654,11 @@ function MainTimeSeriesChart({
           {overlays.has("area") && (
             <LegendChip colorStyle={{ backgroundColor: color, opacity: 0.35 }} label={t("chartArea")} />
           )}
-          {overlays.has("linear") && (
-            <LegendChip
-              colorStyle={{
-                backgroundImage:
-                  "repeating-linear-gradient(90deg, #f59e0b 0 2px, transparent 2px 4px)",
-              }}
-              label={t("overlayLinear")}
-            />
-          )}
-          {overlays.has("distance") && (
-            <LegendChip colorClass="bg-transparent border border-dashed border-slate-400" label={t("overlayDistance")} />
+          {overlays.has("regression") && (
+            <>
+              <LegendChip colorStyle={{ backgroundColor: "#000000" }} label={t("regressionLabel")} />
+              <LegendChip colorStyle={{ backgroundColor: "#ef4444" }} label="Data points" />
+            </>
           )}
         </div>
       )}
@@ -701,8 +703,8 @@ function OverlayTooltip({
   if (!row) return null;
 
   const value = row.equity;
-  const linear = row.linear;
-  const delta = value - linear;
+  const regression = row.regression;
+  const delta = value - regression;
 
   return (
     <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200 dark:border-slate-600 rounded-md px-2.5 py-1.5 text-xs shadow-lg">
@@ -710,26 +712,50 @@ function OverlayTooltip({
         {label}
       </div>
       <div className="text-slate-800 dark:text-slate-100">
-        {t("chartBar")}: ${fmtMoney(value)}
+        <span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1 align-middle" />
+        ${fmtMoney(value)}
       </div>
-      {overlays.has("linear") && (
-        <div className="text-amber-600 dark:text-amber-400">
-          {t("overlayLinear")}: ${fmtMoney(linear)}
-        </div>
-      )}
-      {overlays.has("distance") && (
-        <div
-          className={`${
-            delta >= 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400"
-          } font-medium`}
-        >
-          {t("deltaLabel")}: {delta >= 0 ? "+" : "-"}${fmtMoney(Math.abs(delta))}
-        </div>
+      {overlays.has("regression") && (
+        <>
+          <div className="text-slate-600 dark:text-slate-300">
+            <span className="inline-block w-2 h-0.5 bg-black dark:bg-slate-100 mr-1 align-middle" />
+            {t("regressionLabel")}: ${fmtMoney(regression)}
+          </div>
+          <div
+            className={`font-medium ${
+              delta >= 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            {t("deltaLabel")}: {delta >= 0 ? "+" : "-"}${fmtMoney(Math.abs(delta))}
+          </div>
+        </>
       )}
     </div>
   );
+}
+
+/** 최소제곱 선형회귀. x = 인덱스(0..n-1), y = 입력값. */
+function linearRegression(ys: number[]): { slope: number; intercept: number } {
+  const n = ys.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: ys[0] };
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += i;
+    sumY += ys[i];
+    sumXY += i * ys[i];
+    sumXX += i * i;
+  }
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return { slope: 0, intercept: sumY / n };
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
 }
 
 // ───────────────────────────────────────────── right-side asset breakdown
