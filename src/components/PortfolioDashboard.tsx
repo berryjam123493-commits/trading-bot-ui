@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Sigma,
   BarChart3,
+  PieChart as PieIcon,
 } from "lucide-react";
 import { useI18n } from "../i18n/context";
 import { useIsMobile } from "../device/context";
@@ -801,60 +802,80 @@ function AssetBreakdownPanel({
     ];
     const pieData = barData.filter((d) => d.value > 0);
 
+    const barChart = (
+      <BarChart data={barData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="currentColor"
+          className="text-slate-200 dark:text-slate-700"
+        />
+        <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} />
+        <YAxis
+          tick={{ fontSize: 9 }}
+          stroke="#94a3b8"
+          tickFormatter={(v) => `$${fmtShort(v as number)}`}
+          width={42}
+        />
+        <RTooltip
+          contentStyle={{ fontSize: 11, borderRadius: 8 }}
+          formatter={(v: number) => `$${fmtMoney(v)}`}
+        />
+        <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+          {barData.map((_, i) => (
+            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
+    );
+
+    const pieChart = (
+      <PieChart>
+        <Pie
+          data={pieData}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          outerRadius={isMobile ? 60 : 75}
+          label={(entry) => entry.name}
+          labelLine={false}
+        >
+          {pieData.map((_, i) => (
+            <Cell
+              key={i}
+              fill={COLORS[i % COLORS.length]}
+              stroke="rgba(255,255,255,0.4)"
+            />
+          ))}
+        </Pie>
+        <RTooltip
+          contentStyle={{ fontSize: 11, borderRadius: 8 }}
+          formatter={(v: number) => `$${fmtMoney(v)}`}
+        />
+        <Legend wrapperStyle={{ fontSize: 10 }} />
+      </PieChart>
+    );
+
+    // 모바일: 한 카드 안에서 바/파이 토글
+    if (isMobile) {
+      return (
+        <AllocationMergedCard
+          barChart={barChart}
+          pieChart={pieChart}
+          barHeight={barHeight}
+          pieHeight={pieHeight}
+        />
+      );
+    }
+
+    // 데스크톱: 기존처럼 두 카드로 분리
     return (
       <>
         <BreakdownCard title={t("perAssetValueChart")} height={barHeight}>
-          <BarChart data={barData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="currentColor"
-              className="text-slate-200 dark:text-slate-700"
-            />
-            <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} />
-            <YAxis
-              tick={{ fontSize: 9 }}
-              stroke="#94a3b8"
-              tickFormatter={(v) => `$${fmtShort(v as number)}`}
-              width={42}
-            />
-            <RTooltip
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
-              formatter={(v: number) => `$${fmtMoney(v)}`}
-            />
-            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-              {barData.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
+          {barChart}
         </BreakdownCard>
-
         <BreakdownCard title={t("assetAllocationChart")} height={pieHeight}>
-          <PieChart>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={isMobile ? 60 : 75}
-              label={(entry) => entry.name}
-              labelLine={false}
-            >
-              {pieData.map((_, i) => (
-                <Cell
-                  key={i}
-                  fill={COLORS[i % COLORS.length]}
-                  stroke="rgba(255,255,255,0.4)"
-                />
-              ))}
-            </Pie>
-            <RTooltip
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
-              formatter={(v: number) => `$${fmtMoney(v)}`}
-            />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-          </PieChart>
+          {pieChart}
         </BreakdownCard>
       </>
     );
@@ -930,6 +951,55 @@ function AssetBreakdownPanel({
         </BarChart>
       </BreakdownCard>
     </>
+  );
+}
+
+/**
+ * 모바일 전용: 종목별 평가액(바) + 자산 비중(파이)를 하나의 카드로 합치고
+ * 그 안에서 바/파이 보기를 토글한다. 제목은 "자산 비중".
+ */
+function AllocationMergedCard({
+  barChart,
+  pieChart,
+  barHeight,
+  pieHeight,
+}: {
+  barChart: React.ReactElement;
+  pieChart: React.ReactElement;
+  barHeight: number;
+  pieHeight: number;
+}) {
+  const { t } = useI18n();
+  const [view, setView] = useState<"bar" | "pie">("bar");
+  const height = view === "bar" ? barHeight : pieHeight;
+  return (
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+      <div className="flex items-center justify-between mb-2 gap-2">
+        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+          {t("assetAllocationChart")}
+        </h4>
+        <div className="inline-flex bg-slate-100 dark:bg-slate-700 rounded-md p-0.5 shrink-0">
+          {(["bar", "pie"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded transition ${
+                view === v
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              {v === "bar" ? <BarChart3 size={11} /> : <PieIcon size={11} />}
+              <span>{v === "bar" ? t("chartBar") : t("chartPie")}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ width: "100%", height }}>
+        <ResponsiveContainer>{view === "bar" ? barChart : pieChart}</ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
