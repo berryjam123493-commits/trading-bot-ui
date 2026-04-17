@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { I18nProvider } from "./i18n/context";
 import { DeviceProvider } from "./device/context";
 import { ThemeProvider } from "./theme/context";
@@ -15,6 +15,35 @@ import { PortfolioDashboard } from "./components/PortfolioDashboard";
 import { DeviceFrame } from "./components/DeviceFrame";
 
 const USER_NAME = "승재";
+
+/**
+ * sessionStorage 키.
+ * - sessionStorage 는 동일 탭 내에서만 유지 → 새로고침엔 살아남지만,
+ *   사용자가 탭을 닫고 앱을 새로 열면 초기화 됨.
+ * - 요구사항: "새로고침 시엔 현재 화면 유지, 앱을 새로 열 때만 포트폴리오" → 이 특성과 완벽히 일치.
+ */
+const SESSION_KEY_MAIN_TAB = "app-main-tab";
+const SESSION_KEY_SELECTED_BOT = "app-selected-bot-id";
+
+function readStoredMainTab(): MainTab | null {
+  if (typeof sessionStorage === "undefined") return null;
+  const v = sessionStorage.getItem(SESSION_KEY_MAIN_TAB);
+  if (
+    v === "portfolio" ||
+    v === "bots" ||
+    v === "backtest" ||
+    v === "settings" ||
+    v === "help"
+  ) {
+    return v;
+  }
+  return null;
+}
+
+function readStoredSelectedBotId(): string | null {
+  if (typeof sessionStorage === "undefined") return null;
+  return sessionStorage.getItem(SESSION_KEY_SELECTED_BOT);
+}
 
 /** 봇의 현재 운용 총 금액 (마지막 equity 포인트). equity 기록이 없으면 0. */
 function currentEquity(bot: Bot): number {
@@ -46,13 +75,40 @@ function AppInner() {
   const [deviceView, setDeviceView] = useState<DeviceView>(() =>
     window.matchMedia?.("(max-width: 767px)").matches ? "mobile" : "desktop"
   );
-  // 앱 켜고 제일 처음 보는 화면은 포트폴리오
-  const [mainTab, setMainTab] = useState<MainTab>("portfolio");
+  // 앱을 "처음" 열 때 (= 새 탭) 에만 포트폴리오로 시작.
+  // 같은 탭에서 새로고침하면 직전 화면을 그대로 복원 (sessionStorage).
+  const [mainTab, setMainTab] = useState<MainTab>(
+    () => readStoredMainTab() ?? "portfolio"
+  );
   const [bots, setBots] = useState<Bot[]>(mockBots);
   const sortedBots = useMemo(() => sortBots(bots), [bots]);
-  const [selectedBotId, setSelectedBotId] = useState<string | null>(
-    sortBots(mockBots)[0]?.id ?? null
-  );
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(() => {
+    const fallback = sortBots(mockBots)[0]?.id ?? null;
+    const saved = readStoredSelectedBotId();
+    if (saved && mockBots.some((b) => b.id === saved)) return saved;
+    return fallback;
+  });
+
+  // mainTab / selectedBotId 가 바뀔 때마다 sessionStorage 에 기록
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SESSION_KEY_MAIN_TAB, mainTab);
+    } catch {
+      /* storage 꺼져있어도 무시 */
+    }
+  }, [mainTab]);
+
+  useEffect(() => {
+    try {
+      if (selectedBotId) {
+        sessionStorage.setItem(SESSION_KEY_SELECTED_BOT, selectedBotId);
+      } else {
+        sessionStorage.removeItem(SESSION_KEY_SELECTED_BOT);
+      }
+    } catch {
+      /* storage 꺼져있어도 무시 */
+    }
+  }, [selectedBotId]);
 
   // 사이드바: 항상 닫힘으로 시작 (열면 오버레이 드로어)
   const [sidebarOpen, setSidebarOpen] = useState(false);
