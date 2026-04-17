@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  LineChart as RLineChart,
+  ComposedChart,
   Line,
-  AreaChart,
   Area,
-  BarChart,
   Bar,
+  BarChart,
   PieChart,
   Pie,
   Cell,
@@ -18,9 +17,10 @@ import {
 } from "recharts";
 import {
   LineChart as LineIcon,
-  BarChart3,
-  PieChart as PieIcon,
-  Activity,
+  Minus,
+  TrendingUp,
+  Ruler,
+  Sigma,
 } from "lucide-react";
 import { useI18n } from "../i18n/context";
 import { useIsMobile } from "../device/context";
@@ -39,24 +39,24 @@ interface Props {
   userName: string;
 }
 
-type ChartType = "line" | "dashed" | "area" | "bar" | "pie";
+/**
+ * 메인 시계열 차트에 겹쳐 표시할 오버레이들.
+ * 기본은 바 그래프이며, 여기 항목들은 모두 켜짐/꺼짐 토글 가능 & 중복 선택 가능.
+ */
+type Overlay = "line" | "dashed" | "area" | "linear" | "distance";
 type AssetSelection = "all" | string;
 
-const AGGREGATE_CHARTS: ChartType[] = ["line", "dashed", "area", "bar", "pie"];
-const ASSET_CHARTS: ChartType[] = ["line", "dashed", "area", "bar", "pie"];
-
-// 자산별 색상 팔레트 (반복 사용)
 const COLORS = [
-  "#2563eb", // blue
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // rose
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#ec4899", // pink
-  "#84cc16", // lime
-  "#f97316", // orange
-  "#64748b", // slate (for cash)
+  "#2563eb",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
+  "#f97316",
+  "#64748b",
 ];
 
 export function PortfolioDashboard({ bots, userName }: Props) {
@@ -64,7 +64,7 @@ export function PortfolioDashboard({ bots, userName }: Props) {
   const isMobile = useIsMobile();
 
   const [asset, setAsset] = useState<AssetSelection>("all");
-  const [chart, setChart] = useState<ChartType>("line");
+  const [overlays, setOverlays] = useState<Set<Overlay>>(new Set());
 
   const portfolio = useMemo(() => computePortfolio(bots), [bots]);
   const assetDetail = useMemo(
@@ -72,13 +72,28 @@ export function PortfolioDashboard({ bots, userName }: Props) {
     [bots, asset]
   );
 
-  const activeCharts = asset === "all" ? AGGREGATE_CHARTS : ASSET_CHARTS;
+  const toggleOverlay = (o: Overlay) => {
+    setOverlays((prev) => {
+      const next = new Set(prev);
+      if (next.has(o)) next.delete(o);
+      else next.add(o);
+      return next;
+    });
+  };
+
+  // 메인 차트 데이터 — 시간 x, 자산의 양 y
+  const timeSeriesData =
+    asset === "all"
+      ? portfolio.combinedEquityCurve
+      : assetDetail?.valueOverTime ?? [];
+
+  const primaryColor = asset === "all" ? "#2563eb" : "#10b981";
 
   return (
     <div
       className={`${isMobile ? "p-3 space-y-4" : "p-6 space-y-5"} overflow-y-auto bg-slate-50 dark:bg-slate-900 min-h-full flex-1`}
     >
-      {/* 환영 메시지 — 좌상단 */}
+      {/* 환영 메시지 */}
       <div>
         <h1
           className={`font-bold text-slate-800 dark:text-slate-100 ${
@@ -97,50 +112,58 @@ export function PortfolioDashboard({ bots, userName }: Props) {
         </p>
       </div>
 
-      {/* 요약 카드들 — 종합 또는 단일 자산에 따라 다름 */}
+      {/* 요약 카드 */}
       {asset === "all" ? (
         <AggregateStatCards portfolio={portfolio} isMobile={isMobile} />
       ) : assetDetail ? (
         <AssetStatCards detail={assetDetail} isMobile={isMobile} />
       ) : null}
 
-      {/* 종목 선택 + 차트 종류 스위처 */}
+      {/* 종목 선택 + 오버레이 토글 */}
       <div
         className={`flex gap-3 ${isMobile ? "flex-col" : "flex-row items-end flex-wrap"}`}
       >
         <AssetSelector
           value={asset}
           symbols={portfolio.allTradedSymbols}
-          onChange={(v) => {
-            setAsset(v);
-            // 선택한 뷰에서 지원되는 기본 차트로 초기화 (라인)
-            setChart("line");
-          }}
+          onChange={(v) => setAsset(v)}
         />
-        <ChartTypeSwitcher
-          value={chart}
-          onChange={setChart}
-          available={activeCharts}
-        />
+        <OverlayToggles values={overlays} onToggle={toggleOverlay} />
       </div>
 
-      {/* 차트 영역 */}
-      <div
-        className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl ${isMobile ? "p-3" : "p-4"}`}
-      >
-        {asset === "all" ? (
-          <AggregateChart portfolio={portfolio} chart={chart} isMobile={isMobile} />
-        ) : assetDetail ? (
-          <AssetChart
-            detail={assetDetail}
+      {/* 메인 차트 + 오른쪽 자산 구성 패널 */}
+      <div className={`grid gap-3 ${isMobile ? "grid-cols-1" : "lg:grid-cols-3"}`}>
+        {/* 메인: 바 + 오버레이 */}
+        <div
+          className={`lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl ${
+            isMobile ? "p-3" : "p-4"
+          }`}
+        >
+          <MainTimeSeriesChart
+            title={
+              asset === "all"
+                ? t("portfolioValueChart")
+                : `${t("valueOverTimeChart")} — ${asset}`
+            }
+            data={timeSeriesData}
+            overlays={overlays}
+            isMobile={isMobile}
+            color={primaryColor}
+          />
+        </div>
+
+        {/* 오른쪽: 자산 구성 (바 + 파이) */}
+        <div className="lg:col-span-1 space-y-3">
+          <AssetBreakdownPanel
+            asset={asset}
             portfolio={portfolio}
-            chart={chart}
+            assetDetail={assetDetail}
             isMobile={isMobile}
           />
-        ) : null}
+        </div>
       </div>
 
-      {/* 매매 로그 — 종합 뷰는 전체 봇 최근 50건, 단일 자산 뷰는 그 자산만 */}
+      {/* 매매 로그 */}
       <TradeLogPanel
         logs={
           asset === "all"
@@ -298,7 +321,7 @@ function StatCard({
   );
 }
 
-// ───────────────────────────────────────────── selectors
+// ───────────────────────────────────────────── selectors & overlay toggles
 
 function AssetSelector({
   value,
@@ -331,364 +354,476 @@ function AssetSelector({
   );
 }
 
-function ChartTypeSwitcher({
-  value,
-  onChange,
-  available,
+function OverlayToggles({
+  values,
+  onToggle,
 }: {
-  value: ChartType;
-  onChange: (v: ChartType) => void;
-  available: ChartType[];
+  values: Set<Overlay>;
+  onToggle: (o: Overlay) => void;
 }) {
   const { t } = useI18n();
-  const labelMap: Record<ChartType, { label: string; icon: React.ReactNode }> = {
-    line: { label: t("chartLine"), icon: <LineIcon size={14} /> },
-    dashed: { label: t("chartDashed"), icon: <Activity size={14} /> },
-    area: { label: t("chartArea"), icon: <LineIcon size={14} /> },
-    bar: { label: t("chartBar"), icon: <BarChart3 size={14} /> },
-    pie: { label: t("chartPie"), icon: <PieIcon size={14} /> },
-  };
+  const items: { key: Overlay; label: string; icon: React.ReactNode; title: string }[] = [
+    { key: "line", label: t("chartLine"), icon: <LineIcon size={12} />, title: t("chartLine") },
+    { key: "dashed", label: t("chartDashed"), icon: <Minus size={12} />, title: t("chartDashed") },
+    { key: "area", label: t("chartArea"), icon: <TrendingUp size={12} />, title: t("chartArea") },
+    { key: "linear", label: t("overlayLinear"), icon: <Ruler size={12} />, title: t("overlayLinearFull") },
+    { key: "distance", label: t("overlayDistance"), icon: <Sigma size={12} />, title: t("overlayDistanceFull") },
+  ];
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-semibold tracking-wider uppercase text-slate-400 dark:text-slate-500">
-        {t("chartTypeLabel")}
+      <label
+        className="text-[11px] font-semibold tracking-wider uppercase text-slate-400 dark:text-slate-500"
+        title={t("overlayHint")}
+      >
+        {t("overlayLabel")}
       </label>
-      <div className="inline-flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-0.5">
-        {available.map((c) => (
-          <button
-            key={c}
-            onClick={() => onChange(c)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition ${
-              value === c
-                ? "bg-brand-600 text-white"
-                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-            }`}
-          >
-            {labelMap[c].icon}
-            <span>{labelMap[c].label}</span>
-          </button>
-        ))}
+      <div className="inline-flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-0.5 flex-wrap gap-0.5">
+        {items.map((it) => {
+          const active = values.has(it.key);
+          return (
+            <button
+              key={it.key}
+              type="button"
+              title={it.title}
+              onClick={() => onToggle(it.key)}
+              className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded transition ${
+                active
+                  ? "bg-brand-600 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {it.icon}
+              <span>{it.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// ───────────────────────────────────────────── charts (aggregate view)
+// ───────────────────────────────────────────── main time-series chart
 
-function AggregateChart({
-  portfolio,
-  chart,
+type TimePoint = { date: string; equity: number };
+
+interface TooltipPayloadItem {
+  dataKey?: string;
+  color?: string;
+  payload?: TimeRow;
+}
+
+type TimeRow = TimePoint & { linear: number };
+
+function MainTimeSeriesChart({
+  title,
+  data,
+  overlays,
   isMobile,
+  color,
 }: {
-  portfolio: PortfolioSnapshot;
-  chart: ChartType;
+  title: string;
+  data: TimePoint[];
+  overlays: Set<Overlay>;
   isMobile: boolean;
+  color: string;
 }) {
   const { t } = useI18n();
-  const height = isMobile ? 240 : 320;
+  const height = isMobile ? 260 : 340;
 
-  // Pie: 자산 비중 (종목 + 현금)
-  if (chart === "pie") {
-    const data = [
-      ...portfolio.holdings.map((h) => ({ name: h.symbol, value: h.currentValue })),
-      { name: t("cashLabel"), value: portfolio.cash },
-    ].filter((d) => d.value > 0);
+  // 각 포인트에 linear 값을 덧붙임
+  const enriched: TimeRow[] = useMemo(() => {
+    if (data.length === 0) return [];
+    const firstY = data[0].equity;
+    const lastY = data[data.length - 1].equity;
+    const denom = Math.max(1, data.length - 1);
+    return data.map((p, i) => ({
+      ...p,
+      linear: firstY + ((lastY - firstY) * i) / denom,
+    }));
+  }, [data]);
 
+  if (enriched.length === 0) {
     return (
-      <ChartFrame title={t("assetAllocationChart")} height={height}>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={isMobile ? 80 : 110}
-            label={(entry) => entry.name}
-            labelLine={false}
-          >
-            {data.map((_, i) => (
-              <Cell
-                key={i}
-                fill={COLORS[i % COLORS.length]}
-                stroke="rgba(255,255,255,0.4)"
-              />
-            ))}
-          </Pie>
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-        </PieChart>
-      </ChartFrame>
+      <>
+        <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 text-sm">
+          {title}
+        </h3>
+        <div
+          className="flex items-center justify-center text-sm text-slate-400 dark:text-slate-500"
+          style={{ height }}
+        >
+          {t("noTrades")}
+        </div>
+      </>
     );
   }
 
-  // Bar: 종목별 평가액
-  if (chart === "bar") {
-    const data = [
-      ...portfolio.holdings.map((h) => ({ name: h.symbol, value: h.currentValue })),
-      { name: t("cashLabel"), value: portfolio.cash },
-    ];
-    return (
-      <ChartFrame title={t("perAssetValueChart")} height={height}>
-        <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            className="text-slate-200 dark:text-slate-700"
-          />
-          <XAxis dataKey="name" tick={{ fontSize: isMobile ? 9 : 11 }} stroke="#94a3b8" />
-          <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
-            stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
-          />
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ChartFrame>
-    );
-  }
-
-  // Line / Dashed / Area: 포트폴리오 전체 가치 시계열
-  const data = portfolio.combinedEquityCurve;
   return (
-    <ChartFrame title={t("portfolioValueChart")} height={height}>
-      {chart === "area" ? (
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="gEquity" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            className="text-slate-200 dark:text-slate-700"
-          />
-          <XAxis dataKey="date" tick={{ fontSize: isMobile ? 9 : 10 }} stroke="#94a3b8" />
-          <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
-            stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
-          />
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Area
-            type="monotone"
-            dataKey="equity"
-            stroke="#2563eb"
-            strokeWidth={2}
-            fill="url(#gEquity)"
-          />
-        </AreaChart>
-      ) : (
-        <RLineChart data={data}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            className="text-slate-200 dark:text-slate-700"
-          />
-          <XAxis dataKey="date" tick={{ fontSize: isMobile ? 9 : 10 }} stroke="#94a3b8" />
-          <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
-            stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
-          />
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Line
-            type="monotone"
-            dataKey="equity"
-            stroke="#2563eb"
-            strokeWidth={2}
-            strokeDasharray={chart === "dashed" ? "6 4" : undefined}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-        </RLineChart>
+    <>
+      <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 text-sm">
+        {title}
+      </h3>
+      <div style={{ width: "100%", height }}>
+        <ResponsiveContainer>
+          <ComposedChart data={enriched} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+            {overlays.has("area") && (
+              <defs>
+                <linearGradient id="gOverlayArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+            )}
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="currentColor"
+              className="text-slate-200 dark:text-slate-700"
+            />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: isMobile ? 9 : 10 }}
+              stroke="#94a3b8"
+            />
+            <YAxis
+              tick={{ fontSize: isMobile ? 9 : 10 }}
+              stroke="#94a3b8"
+              tickFormatter={(v) => `$${fmtShort(v as number)}`}
+              width={isMobile ? 48 : 60}
+            />
+            <RTooltip
+              cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+              content={<OverlayTooltip overlays={overlays} />}
+            />
+
+            {/* 기본 바 (항상 표시) */}
+            <Bar
+              dataKey="equity"
+              fill={color}
+              fillOpacity={0.55}
+              radius={[3, 3, 0, 0]}
+              maxBarSize={isMobile ? 18 : 26}
+              isAnimationActive={false}
+            />
+
+            {/* 오버레이: area */}
+            {overlays.has("area") && (
+              <Area
+                type="monotone"
+                dataKey="equity"
+                stroke={color}
+                strokeWidth={1.5}
+                fill="url(#gOverlayArea)"
+                isAnimationActive={false}
+                activeDot={false}
+              />
+            )}
+
+            {/* 오버레이: 라인 */}
+            {overlays.has("line") && (
+              <Line
+                type="monotone"
+                dataKey="equity"
+                stroke={color}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+                isAnimationActive={false}
+              />
+            )}
+
+            {/* 오버레이: 점선 */}
+            {overlays.has("dashed") && (
+              <Line
+                type="monotone"
+                dataKey="equity"
+                stroke={color}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+            )}
+
+            {/* 오버레이: 기준선 (start → end linear) */}
+            {overlays.has("linear") && (
+              <Line
+                type="linear"
+                dataKey="linear"
+                stroke="#f59e0b"
+                strokeWidth={1.8}
+                strokeDasharray="2 3"
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 범례 (활성화된 오버레이만) */}
+      {overlays.size > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
+          <LegendChip colorClass="bg-slate-400" label={t("chartBar")} />
+          {overlays.has("line") && (
+            <LegendChip colorStyle={{ backgroundColor: color }} label={t("chartLine")} />
+          )}
+          {overlays.has("dashed") && (
+            <LegendChip
+              colorStyle={{
+                backgroundImage: `repeating-linear-gradient(90deg, ${color} 0 4px, transparent 4px 7px)`,
+              }}
+              label={t("chartDashed")}
+            />
+          )}
+          {overlays.has("area") && (
+            <LegendChip colorStyle={{ backgroundColor: color, opacity: 0.35 }} label={t("chartArea")} />
+          )}
+          {overlays.has("linear") && (
+            <LegendChip
+              colorStyle={{
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, #f59e0b 0 2px, transparent 2px 4px)",
+              }}
+              label={t("overlayLinear")}
+            />
+          )}
+          {overlays.has("distance") && (
+            <LegendChip colorClass="bg-transparent border border-dashed border-slate-400" label={t("overlayDistance")} />
+          )}
+        </div>
       )}
-    </ChartFrame>
+    </>
   );
 }
 
-// ───────────────────────────────────────────── charts (per-asset view)
+function LegendChip({
+  label,
+  colorClass,
+  colorStyle,
+}: {
+  label: string;
+  colorClass?: string;
+  colorStyle?: React.CSSProperties;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span
+        className={`inline-block w-3 h-1.5 rounded-sm ${colorClass ?? ""}`}
+        style={colorStyle}
+      />
+      {label}
+    </span>
+  );
+}
 
-function AssetChart({
-  detail,
+function OverlayTooltip({
+  active,
+  payload,
+  label,
+  overlays,
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string | number;
+  overlays: Set<Overlay>;
+}) {
+  const { t } = useI18n();
+  if (!active || !payload || payload.length === 0) return null;
+  const row = payload[0].payload;
+  if (!row) return null;
+
+  const value = row.equity;
+  const linear = row.linear;
+  const delta = value - linear;
+
+  return (
+    <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200 dark:border-slate-600 rounded-md px-2.5 py-1.5 text-xs shadow-lg">
+      <div className="font-semibold text-slate-700 dark:text-slate-200 mb-0.5">
+        {label}
+      </div>
+      <div className="text-slate-800 dark:text-slate-100">
+        {t("chartBar")}: ${fmtMoney(value)}
+      </div>
+      {overlays.has("linear") && (
+        <div className="text-amber-600 dark:text-amber-400">
+          {t("overlayLinear")}: ${fmtMoney(linear)}
+        </div>
+      )}
+      {overlays.has("distance") && (
+        <div
+          className={`${
+            delta >= 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400"
+          } font-medium`}
+        >
+          {t("deltaLabel")}: {delta >= 0 ? "+" : "-"}${fmtMoney(Math.abs(delta))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────── right-side asset breakdown
+
+function AssetBreakdownPanel({
+  asset,
   portfolio,
-  chart,
+  assetDetail,
   isMobile,
 }: {
-  detail: AssetDetail;
+  asset: AssetSelection;
   portfolio: PortfolioSnapshot;
-  chart: ChartType;
+  assetDetail: AssetDetail | null;
   isMobile: boolean;
 }) {
   const { t } = useI18n();
-  const height = isMobile ? 240 : 320;
+  const barHeight = isMobile ? 180 : 210;
+  const pieHeight = isMobile ? 180 : 220;
 
-  // Pie: 포트폴리오 내 비중 (이 자산 vs 기타)
-  if (chart === "pie") {
-    const thisValue = detail.holding?.currentValue ?? 0;
-    const otherValue = Math.max(0, portfolio.totalEquity - thisValue);
-    const data = [
-      { name: detail.symbol, value: thisValue },
-      { name: t("allAssets"), value: otherValue },
-    ].filter((d) => d.value > 0);
+  if (asset === "all") {
+    // 종합 뷰: 종목별 평가액 바 + 자산 비중 파이
+    const barData = [
+      ...portfolio.holdings.map((h) => ({ name: h.symbol, value: h.currentValue })),
+      { name: t("cashLabel"), value: portfolio.cash },
+    ];
+    const pieData = barData.filter((d) => d.value > 0);
+
     return (
-      <ChartFrame title={t("portionInPortfolio")} height={height}>
+      <>
+        <BreakdownCard title={t("perAssetValueChart")} height={barHeight}>
+          <BarChart data={barData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="currentColor"
+              className="text-slate-200 dark:text-slate-700"
+            />
+            <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} />
+            <YAxis
+              tick={{ fontSize: 9 }}
+              stroke="#94a3b8"
+              tickFormatter={(v) => `$${fmtShort(v as number)}`}
+              width={42}
+            />
+            <RTooltip
+              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              formatter={(v: number) => `$${fmtMoney(v)}`}
+            />
+            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+              {barData.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </BreakdownCard>
+
+        <BreakdownCard title={t("assetAllocationChart")} height={pieHeight}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={isMobile ? 60 : 75}
+              label={(entry) => entry.name}
+              labelLine={false}
+            >
+              {pieData.map((_, i) => (
+                <Cell
+                  key={i}
+                  fill={COLORS[i % COLORS.length]}
+                  stroke="rgba(255,255,255,0.4)"
+                />
+              ))}
+            </Pie>
+            <RTooltip
+              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              formatter={(v: number) => `$${fmtMoney(v)}`}
+            />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+          </PieChart>
+        </BreakdownCard>
+      </>
+    );
+  }
+
+  if (!assetDetail) return null;
+
+  // 단일 자산 뷰: 포트폴리오 내 비중 파이 + 월별 매수/매도 바
+  const thisValue = assetDetail.holding?.currentValue ?? 0;
+  const otherValue = Math.max(0, portfolio.totalEquity - thisValue);
+  const portionData = [
+    { name: assetDetail.symbol, value: thisValue },
+    { name: t("allAssets"), value: otherValue },
+  ].filter((d) => d.value > 0);
+
+  const activityData = assetDetail.buysByMonth.map((row, i) => ({
+    month: row.month,
+    [t("buysLabel")]: row.amount,
+    [t("sellsLabel")]: assetDetail.sellsByMonth[i]?.amount ?? 0,
+  }));
+
+  return (
+    <>
+      <BreakdownCard title={t("portionInPortfolio")} height={pieHeight}>
         <PieChart>
           <Pie
-            data={data}
+            data={portionData}
             dataKey="value"
             nameKey="name"
             cx="50%"
             cy="50%"
-            outerRadius={isMobile ? 80 : 110}
-            label={(entry) => `${entry.name} (${((entry.percent as number) * 100).toFixed(1)}%)`}
+            outerRadius={isMobile ? 60 : 75}
+            label={(entry) =>
+              `${entry.name} (${(((entry.percent ?? 0) as number) * 100).toFixed(1)}%)`
+            }
             labelLine={false}
           >
             <Cell fill={COLORS[0]} />
             <Cell fill="#94a3b8" />
           </Pie>
           <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            contentStyle={{ fontSize: 11, borderRadius: 8 }}
             formatter={(v: number) => `$${fmtMoney(v)}`}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 10 }} />
         </PieChart>
-      </ChartFrame>
-    );
-  }
+      </BreakdownCard>
 
-  // Bar: 월별 매수/매도 비교
-  if (chart === "bar") {
-    const data = detail.buysByMonth.map((row, i) => ({
-      month: row.month,
-      [t("buysLabel")]: row.amount,
-      [t("sellsLabel")]: detail.sellsByMonth[i]?.amount ?? 0,
-    }));
-    return (
-      <ChartFrame
-        title={`${t("tradeActivityChart")} — ${detail.symbol}`}
-        height={height}
+      <BreakdownCard
+        title={`${t("tradeActivityChart")} — ${assetDetail.symbol}`}
+        height={barHeight}
       >
-        <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+        <BarChart data={activityData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="currentColor"
             className="text-slate-200 dark:text-slate-700"
           />
-          <XAxis dataKey="month" tick={{ fontSize: isMobile ? 9 : 11 }} stroke="#94a3b8" />
+          <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
           <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
+            tick={{ fontSize: 9 }}
             stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
+            tickFormatter={(v) => `$${fmtShort(v as number)}`}
+            width={42}
           />
           <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            contentStyle={{ fontSize: 11, borderRadius: 8 }}
             formatter={(v: number) => `$${fmtMoney(v)}`}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey={t("buysLabel")} fill="#10b981" radius={[4, 4, 0, 0]} />
-          <Bar dataKey={t("sellsLabel")} fill="#ef4444" radius={[4, 4, 0, 0]} />
+          <Legend wrapperStyle={{ fontSize: 10 }} />
+          <Bar dataKey={t("buysLabel")} fill="#10b981" radius={[3, 3, 0, 0]} />
+          <Bar dataKey={t("sellsLabel")} fill="#ef4444" radius={[3, 3, 0, 0]} />
         </BarChart>
-      </ChartFrame>
-    );
-  }
-
-  // Line / Dashed / Area: 이 자산의 시점별 평가액
-  const data = detail.valueOverTime;
-  return (
-    <ChartFrame
-      title={`${t("valueOverTimeChart")} — ${detail.symbol}`}
-      height={height}
-    >
-      {chart === "area" ? (
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="gAsset" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            className="text-slate-200 dark:text-slate-700"
-          />
-          <XAxis dataKey="date" tick={{ fontSize: isMobile ? 9 : 10 }} stroke="#94a3b8" />
-          <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
-            stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
-          />
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Area
-            type="monotone"
-            dataKey="equity"
-            stroke="#10b981"
-            strokeWidth={2}
-            fill="url(#gAsset)"
-          />
-        </AreaChart>
-      ) : (
-        <RLineChart data={data}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            className="text-slate-200 dark:text-slate-700"
-          />
-          <XAxis dataKey="date" tick={{ fontSize: isMobile ? 9 : 10 }} stroke="#94a3b8" />
-          <YAxis
-            tick={{ fontSize: isMobile ? 9 : 10 }}
-            stroke="#94a3b8"
-            tickFormatter={(v) => `$${fmtShort(v)}`}
-            width={isMobile ? 48 : 60}
-          />
-          <RTooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => `$${fmtMoney(v)}`}
-          />
-          <Line
-            type="monotone"
-            dataKey="equity"
-            stroke="#10b981"
-            strokeWidth={2}
-            strokeDasharray={chart === "dashed" ? "6 4" : undefined}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-        </RLineChart>
-      )}
-    </ChartFrame>
+      </BreakdownCard>
+    </>
   );
 }
 
-function ChartFrame({
+function BreakdownCard({
   title,
   height,
   children,
@@ -698,14 +833,14 @@ function ChartFrame({
   children: React.ReactElement;
 }) {
   return (
-    <>
-      <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 text-sm">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+      <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
         {title}
-      </h3>
+      </h4>
       <div style={{ width: "100%", height }}>
         <ResponsiveContainer>{children}</ResponsiveContainer>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -844,4 +979,3 @@ function fmtShort(v: number): string {
   if (abs >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
   return v.toFixed(0);
 }
-
