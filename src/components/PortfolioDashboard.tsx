@@ -811,7 +811,7 @@ function AssetBreakdownPanel({
 }) {
   const { t } = useI18n();
   const barHeight = isMobile ? 180 : 210;
-  const pieHeight = isMobile ? 180 : 220;
+  const pieHeight = isMobile ? 210 : 255;
 
   // 색상 피커 상태 (종목 티커 클릭 시 표시)
   const [pickerFor, setPickerFor] = useState<
@@ -885,7 +885,7 @@ function AssetBreakdownPanel({
           nameKey="name"
           cx="50%"
           cy="50%"
-          outerRadius={isMobile ? 60 : 75}
+          outerRadius={isMobile ? 69 : 86}
           labelLine={false}
           label={(props: {
             cx: number;
@@ -1041,7 +1041,7 @@ function AssetBreakdownPanel({
             nameKey="name"
             cx="50%"
             cy="50%"
-            outerRadius={isMobile ? 60 : 75}
+            outerRadius={isMobile ? 69 : 86}
             label={(entry) =>
               `${entry.name} (${(((entry.percent ?? 0) as number) * 100).toFixed(1)}%)`
             }
