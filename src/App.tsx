@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { I18nProvider } from "./i18n/context";
 import { DeviceProvider } from "./device/context";
 import { ThemeProvider } from "./theme/context";
@@ -50,14 +50,10 @@ function AppInner() {
     sortBots(mockBots)[0]?.id ?? null
   );
 
-  // 사이드바: 데스크톱=펼침 기본, 모바일=접힘 기본
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  useEffect(() => {
-    setSidebarOpen(deviceView === "desktop");
-  }, [deviceView]);
+  // 사이드바: 항상 닫힘으로 시작 (열면 오버레이 드로어)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const selectedBot = bots.find((b) => b.id === selectedBotId) ?? null;
-  const isMobile = deviceView === "mobile";
 
   const handleUpdateBot = (patch: Partial<Bot>) => {
     if (!selectedBotId) return;
@@ -95,12 +91,12 @@ def on_bar(symbol, history):
 
   const handleSelectMainTab = (tab: MainTab) => {
     setMainTab(tab);
-    if (isMobile) setSidebarOpen(false); // 모바일: 선택 후 드로어 닫기
+    setSidebarOpen(false); // 탭 선택 후 드로어 닫기
   };
 
   const handleSelectBot = (id: string) => {
     setSelectedBotId(id);
-    if (isMobile) setSidebarOpen(false);
+    setSidebarOpen(false);
   };
 
   return (
@@ -125,8 +121,8 @@ def on_bar(symbol, history):
               open={sidebarOpen}
               onClose={() => setSidebarOpen(false)}
             />
-            {/* 모바일 드로어 배경 오버레이 */}
-            {isMobile && sidebarOpen && (
+            {/* 드로어 배경 오버레이 — 모바일/데스크톱 모두 */}
+            {sidebarOpen && (
               <div
                 className="absolute inset-0 bg-black/40 z-20"
                 onClick={() => setSidebarOpen(false)}

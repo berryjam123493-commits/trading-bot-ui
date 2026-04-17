@@ -82,7 +82,13 @@ export function Header({
             isMobile ? "text-sm" : ""
           }`}
         >
-          {isMobile ? "Auto" : t("appTitle")}
+          {isMobile ? (
+            <>
+              A<span className="text-[10px] font-medium">uto</span>
+              {" "}T<span className="text-[10px] font-medium">rade</span>
+              {" "}S<span className="text-[10px] font-medium">tudio</span>
+            </>
+          ) : t("appTitle")}
         </h1>
       </div>
 

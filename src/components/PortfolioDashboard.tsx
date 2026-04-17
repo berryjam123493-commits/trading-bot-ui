@@ -278,12 +278,12 @@ function StatCard({
       }`}
     >
       <p
-        className={`text-slate-500 dark:text-slate-400 mb-1 ${compact ? "text-[10px]" : "text-xs"}`}
+        className={`text-slate-500 dark:text-slate-400 mb-1 truncate ${compact ? "text-[10px]" : "text-xs"}`}
       >
         {label}
       </p>
       <p
-        className={`font-semibold text-slate-900 dark:text-slate-100 ${
+        className={`font-semibold text-slate-900 dark:text-slate-100 truncate ${
           compact ? "text-sm" : "text-xl"
         } ${valueClass || ""}`}
       >
@@ -291,7 +291,7 @@ function StatCard({
       </p>
       {sub && (
         <p
-          className={`text-slate-400 dark:text-slate-500 mt-0.5 ${compact ? "text-[10px]" : "text-[11px]"}`}
+          className={`text-slate-400 dark:text-slate-500 mt-0.5 truncate ${compact ? "text-[10px]" : "text-[11px]"}`}
         >
           {sub}
         </p>

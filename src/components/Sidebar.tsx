@@ -107,30 +107,26 @@ export function Sidebar({
     );
   }
 
-  // ─── 모바일 드로어: 닫힘 상태 = 렌더하지 않음 ───
-  if (isMobile && !open) return null;
+  // ─── 닫힘 상태 = 렌더하지 않음 (데스크톱/모바일 모두) ───
+  if (!open) return null;
 
-  // ─── 열린 상태 (데스크톱 전체 or 모바일 드로어 오버레이) ───
-  const wrapperClass = isMobile
-    ? "absolute inset-y-0 left-0 w-[78%] max-w-[300px] z-30 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl animate-slide-in"
-    : "w-60 shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col";
+  // ─── 열린 상태: 항상 오버레이 드로어 (콘텐츠를 밀지 않음) ───
+  const wrapperClass = "absolute inset-y-0 left-0 w-[78%] max-w-[280px] z-30 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl animate-slide-in";
 
   return (
     <aside className={wrapperClass}>
-      {/* 모바일 전용: 드로어 헤더 (닫기 버튼) */}
-      {isMobile && (
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-slate-700">
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold tracking-wider">
-            MENU
-          </span>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
+      {/* 드로어 헤더 — 항상 닫기 버튼 표시 */}
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-slate-700">
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold tracking-wider">
+          MENU
+        </span>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+        >
+          <X size={16} />
+        </button>
+      </div>
 
       {/* 대시보드 탭 */}
       <button
