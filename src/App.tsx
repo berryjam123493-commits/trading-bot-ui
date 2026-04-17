@@ -65,6 +65,14 @@ function AppInner() {
     );
   };
 
+  const handleUpdateBotById = (id: string, patch: Partial<Bot>) => {
+    setBots((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+
+  const handleUpdateAllBots = (patch: Partial<Bot>) => {
+    setBots((prev) => prev.map((b) => ({ ...b, ...patch })));
+  };
+
   const handleAddBot = () => {
     const newBot: Bot = {
       id: `bot-${Date.now()}`,
@@ -148,7 +156,13 @@ def on_bar(symbol, history):
                 <EmptyState message="봇을 선택하거나 추가하세요 / Select or add a bot" />
               )}
               {mainTab === "backtest" && <Backtesting bots={bots} />}
-              {mainTab === "settings" && <AppSettings bots={bots} />}
+              {mainTab === "settings" && (
+                <AppSettings
+                  bots={bots}
+                  onUpdateBotById={handleUpdateBotById}
+                  onUpdateAllBots={handleUpdateAllBots}
+                />
+              )}
               {mainTab === "help" && <Help />}
             </main>
           </div>
