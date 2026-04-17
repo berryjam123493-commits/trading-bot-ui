@@ -874,6 +874,9 @@ function AssetBreakdownPanel({
       </BarChart>
     );
 
+    // 파이 라벨 위치 — 같은 쪽(좌/우)에서 겹치지 않게 수직 간격 확보
+    const labelLayout = computePieLabelLayout(pieData);
+
     const pieChart = (
       <PieChart>
         <Pie
@@ -883,8 +886,67 @@ function AssetBreakdownPanel({
           cx="50%"
           cy="50%"
           outerRadius={isMobile ? 60 : 75}
-          label={(entry) => entry.name}
           labelLine={false}
+          label={(props: {
+            cx: number;
+            cy: number;
+            outerRadius: number;
+            index: number;
+          }) => {
+            const slot = labelLayout.get(props.index);
+            if (!slot) return <g />;
+            const item = pieData[props.index];
+            const isCash = item.key === CASH_KEY;
+            const { cx, cy, outerRadius } = props;
+            const startX = cx + outerRadius * slot.sx;
+            const startY = cy + outerRadius * slot.sy;
+            const labelX =
+              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 14);
+            const labelY = cy + slot.adjustedSy * (outerRadius + 10);
+            const connectorEndX =
+              labelX - (slot.side === "right" ? 3 : -3);
+            const anchor = slot.side === "right" ? "start" : "end";
+            return (
+              <g key={`lbl-${item.key}`}>
+                <polyline
+                  points={`${startX},${startY} ${connectorEndX},${labelY}`}
+                  stroke="#334155"
+                  strokeWidth={0.6}
+                  fill="none"
+                />
+                <text
+                  x={labelX}
+                  y={labelY}
+                  dy={3}
+                  textAnchor={anchor}
+                  fontSize={8}
+                  className={
+                    isCash
+                      ? "fill-slate-500 dark:fill-slate-400"
+                      : "fill-slate-600 dark:fill-slate-300 cursor-pointer hover:fill-brand-600 dark:hover:fill-brand-400"
+                  }
+                  style={
+                    isCash
+                      ? undefined
+                      : {
+                          textDecoration: "underline",
+                          textDecorationStyle: "dotted",
+                          textUnderlineOffset: 2,
+                        }
+                  }
+                  onClick={(e) => {
+                    if (isCash) return;
+                    openPicker(
+                      item.key,
+                      e.currentTarget as unknown as HTMLElement
+                    );
+                  }}
+                >
+                  {item.name}
+                </text>
+              </g>
+            );
+          }}
         >
           {pieData.map((d) => (
             <Cell
@@ -1361,4 +1423,73 @@ function isoWeekParts(date: Date): { isoYear: number; isoWeek: number } {
   const yearStart = new Date(Date.UTC(isoYear, 0, 1));
   const isoWeek = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return { isoYear, isoWeek };
+}
+
+/**
+ * 파이 차트 라벨 위치 계산 — 같은 쪽(좌/우)에 몰린 라벨끼리 수직으로 겹치지 않게 분산.
+ * sx/sy 는 반지름 1인 단위원 상의 방향 벡터 (12시 = (0,-1), 3시 = (1,0), 6시 = (0,1), 9시 = (-1,0)).
+ * adjustedSy 는 동일 측에서 최소 간격(minGap)을 확보하도록 위→아래 순으로 누적 조정된 y.
+ * (minGap 은 정규화된 단위 — 실제 픽셀 간격은 minGap × (outerRadius + 10).)
+ */
+function computePieLabelLayout(
+  pieData: { value: number }[]
+): Map<
+  number,
+  { sx: number; sy: number; side: "left" | "right"; adjustedSy: number }
+> {
+  const result = new Map<
+    number,
+    { sx: number; sy: number; side: "left" | "right"; adjustedSy: number }
+  >();
+  const total = pieData.reduce((s, d) => s + d.value, 0);
+  if (total <= 0) return result;
+
+  type Slot = {
+    index: number;
+    sx: number;
+    sy: number;
+    side: "left" | "right";
+    adjustedSy: number;
+  };
+  const slots: Slot[] = [];
+  let cum = 0;
+  for (let i = 0; i < pieData.length; i++) {
+    const start = cum / total;
+    cum += pieData[i].value;
+    const end = cum / total;
+    const mid = (start + end) / 2;
+    // 화면 각도: 12시를 0으로, 시계방향으로 증가하는 라디안
+    const screenAngle = 2 * Math.PI * mid;
+    const sx = Math.sin(screenAngle);
+    const sy = -Math.cos(screenAngle);
+    slots.push({
+      index: i,
+      sx,
+      sy,
+      side: sx >= 0 ? "right" : "left",
+      adjustedSy: sy,
+    });
+  }
+
+  const minGap = 0.25;
+  for (const side of ["left", "right"] as const) {
+    const sameSide = slots
+      .filter((s) => s.side === side)
+      .sort((a, b) => a.sy - b.sy);
+    let lastY = -Infinity;
+    for (const s of sameSide) {
+      s.adjustedSy = Math.max(lastY + minGap, s.sy);
+      lastY = s.adjustedSy;
+    }
+    // 가장 아래 라벨이 너무 밀렸으면 전체를 위로 당겨 중앙에 가깝게
+    if (sameSide.length > 0) {
+      const overflow = sameSide[sameSide.length - 1].adjustedSy - 1.25;
+      if (overflow > 0) {
+        for (const s of sameSide) s.adjustedSy -= overflow;
+      }
+    }
+  }
+
+  for (const s of slots) result.set(s.index, s);
+  return result;
 }
