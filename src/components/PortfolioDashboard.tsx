@@ -618,13 +618,13 @@ function MainTimeSeriesChart({
                   activeDot={false}
                   isAnimationActive={false}
                 />
-                {/* 실제 데이터 점 (빨강) — 선은 투명, 점만 표시 */}
+                {/* 실제 데이터 점 (순빨강) — 선은 투명, 점만 표시 */}
                 <Line
                   type="linear"
                   dataKey="equity"
                   stroke="transparent"
-                  dot={{ r: 3.5, fill: "#ef4444", stroke: "#ef4444" }}
-                  activeDot={{ r: 6, fill: "#ef4444", stroke: "#ffffff", strokeWidth: 2 }}
+                  dot={{ r: 2.3, fill: "#ff0000", stroke: "#ff0000" }}
+                  activeDot={{ r: 4, fill: "#ff0000", stroke: "#ffffff", strokeWidth: 1.5 }}
                   isAnimationActive={false}
                   legendType="none"
                 />
@@ -657,7 +657,7 @@ function MainTimeSeriesChart({
           {overlays.has("regression") && (
             <>
               <LegendChip colorStyle={{ backgroundColor: "#000000" }} label={t("regressionLabel")} />
-              <LegendChip colorStyle={{ backgroundColor: "#ef4444" }} label="Data points" />
+              <LegendChip colorStyle={{ backgroundColor: "#ff0000" }} label="Data points" />
             </>
           )}
         </div>
@@ -712,7 +712,10 @@ function OverlayTooltip({
         {label}
       </div>
       <div className="text-slate-800 dark:text-slate-100">
-        <span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1 align-middle" />
+        <span
+          className="inline-block w-2 h-2 rounded-full mr-1 align-middle"
+          style={{ backgroundColor: "#ff0000" }}
+        />
         ${fmtMoney(value)}
       </div>
       {overlays.has("regression") && (
