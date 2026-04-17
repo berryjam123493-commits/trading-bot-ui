@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { LayoutDashboard, Settings, Code2, Pencil } from "lucide-react";
+import { LayoutDashboard, Settings, Code2, Pencil, ChevronDown } from "lucide-react";
 import { useI18n } from "../i18n/context";
 import { useIsMobile } from "../device/context";
 import type { Bot, BotDetailTab } from "../types";
@@ -11,9 +11,11 @@ import { Abbr } from "./Abbr";
 interface Props {
   bot: Bot;
   onUpdate: (patch: Partial<Bot>) => void;
+  bots: Bot[];
+  onSelectBot: (id: string) => void;
 }
 
-export function BotDetail({ bot, onUpdate }: Props) {
+export function BotDetail({ bot, onUpdate, bots, onSelectBot }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<BotDetailTab>("dashboard");
@@ -27,6 +29,12 @@ export function BotDetail({ bot, onUpdate }: Props) {
           isMobile ? "px-3 py-2" : "px-6 py-3 gap-3"
         }`}
       >
+        {/* 봇 전환 드롭다운 */}
+        <BotSwitcher
+          bots={bots}
+          currentId={bot.id}
+          onSelect={onSelectBot}
+        />
         <span
           className={`w-2 h-2 rounded-full shrink-0 ${
             isLive ? "bg-emerald-500" : "bg-sky-400"
@@ -125,6 +133,88 @@ function SubTab({
       {icon}
       {label}
     </button>
+  );
+}
+
+/**
+ * 현재 봇 이름 왼쪽에 붙는 드롭다운.
+ * 사이드바를 열지 않고도 다른 봇으로 빠르게 전환할 수 있다.
+ */
+function BotSwitcher({
+  bots,
+  currentId,
+  onSelect,
+}: {
+  bots: Bot[];
+  currentId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-0.5 h-6 px-1.5 rounded text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition ${
+          open ? "bg-slate-100 dark:bg-slate-700" : ""
+        }`}
+        title="봇 전환"
+      >
+        <ChevronDown
+          size={14}
+          className={`transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 min-w-[200px] max-h-72 overflow-y-auto">
+          {bots.map((b) => {
+            const isSelected = b.id === currentId;
+            const live = b.mode === "live";
+            return (
+              <button
+                key={b.id}
+                onClick={() => { onSelect(b.id); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition ${
+                  isSelected
+                    ? "bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    live ? "bg-emerald-500" : "bg-sky-400"
+                  } ${b.status === "running" ? "animate-pulse" : "opacity-40"}`}
+                />
+                <span className="flex-1 truncate font-medium">{b.name}</span>
+                {live ? (
+                  <span className="text-[9px] px-1.5 py-px rounded bg-emerald-600 text-white font-bold tracking-wider shrink-0">
+                    LIVE
+                  </span>
+                ) : (
+                  <span className="text-[9px] px-1.5 py-px rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300 font-medium shrink-0">
+                    paper
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

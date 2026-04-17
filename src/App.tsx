@@ -137,7 +137,12 @@ def on_bar(symbol, history):
                 <PortfolioDashboard bots={bots} userName={USER_NAME} />
               )}
               {mainTab === "bots" && selectedBot && (
-                <BotDetail bot={selectedBot} onUpdate={handleUpdateBot} />
+                <BotDetail
+                  bot={selectedBot}
+                  onUpdate={handleUpdateBot}
+                  bots={sortedBots}
+                  onSelectBot={setSelectedBotId}
+                />
               )}
               {mainTab === "bots" && !selectedBot && (
                 <EmptyState message="봇을 선택하거나 추가하세요 / Select or add a bot" />
