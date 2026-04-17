@@ -514,14 +514,20 @@ function MainTimeSeriesChart({
       <div style={{ width: "100%", height }}>
         <ResponsiveContainer>
           <ComposedChart data={enriched} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-            {overlays.has("area") && (
-              <defs>
+            <defs>
+              {overlays.has("area") && (
                 <linearGradient id="gOverlayArea" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
-              </defs>
-            )}
+              )}
+              {/* 데이터 점용 방사형 그라데이션 — 중심은 진한 빨강, 바깥쪽은 투명 */}
+              <radialGradient id="gRedDot" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ff0000" stopOpacity="1" />
+                <stop offset="45%" stopColor="#ff0000" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#ff0000" stopOpacity="0" />
+              </radialGradient>
+            </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="currentColor"
@@ -618,13 +624,13 @@ function MainTimeSeriesChart({
                   activeDot={false}
                   isAnimationActive={false}
                 />
-                {/* 실제 데이터 점 (순빨강) — 선은 투명, 점만 표시 */}
+                {/* 실제 데이터 점 (순빨강, 중심→바깥 방사형 페이드) */}
                 <Line
                   type="linear"
                   dataKey="equity"
                   stroke="transparent"
-                  dot={{ r: 2.3, fill: "#ff0000", stroke: "#ff0000" }}
-                  activeDot={{ r: 4, fill: "#ff0000", stroke: "#ffffff", strokeWidth: 1.5 }}
+                  dot={{ r: 4, fill: "url(#gRedDot)", stroke: "none" }}
+                  activeDot={{ r: 5, fill: "url(#gRedDot)", stroke: "#ffffff", strokeWidth: 1 }}
                   isAnimationActive={false}
                   legendType="none"
                 />
@@ -657,7 +663,13 @@ function MainTimeSeriesChart({
           {overlays.has("regression") && (
             <>
               <LegendChip colorStyle={{ backgroundColor: "#000000" }} label={t("regressionLabel")} />
-              <LegendChip colorStyle={{ backgroundColor: "#ff0000" }} label="Data points" />
+              <LegendChip
+                colorStyle={{
+                  backgroundImage:
+                    "radial-gradient(circle, #ff0000 0%, rgba(255,0,0,0.85) 45%, rgba(255,0,0,0) 100%)",
+                }}
+                label="Data points"
+              />
             </>
           )}
         </div>
@@ -713,8 +725,11 @@ function OverlayTooltip({
       </div>
       <div className="text-slate-800 dark:text-slate-100">
         <span
-          className="inline-block w-2 h-2 rounded-full mr-1 align-middle"
-          style={{ backgroundColor: "#ff0000" }}
+          className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, #ff0000 0%, rgba(255,0,0,0.85) 45%, rgba(255,0,0,0) 100%)",
+          }}
         />
         ${fmtMoney(value)}
       </div>
