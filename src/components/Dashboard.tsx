@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { useI18n } from "../i18n/context";
 import { useIsMobile } from "../device/context";
 import type { Bot } from "../types";
@@ -245,14 +244,23 @@ type Log = {
   reason: string;
 };
 
+function TradeSideBadge({ side }: { side: "buy" | "sell" }) {
+  const { t } = useI18n();
+  return side === "buy" ? (
+    <span className="shrink-0 inline-block w-10 text-center text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+      {t("buySide")}
+    </span>
+  ) : (
+    <span className="shrink-0 inline-block w-10 text-center text-[11px] font-bold px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300">
+      {t("sellSide")}
+    </span>
+  );
+}
+
 function DesktopTradeRow({ log, lang }: { log: Log; lang: "ko" | "en" }) {
   return (
     <li className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/40">
-      {log.side === "buy" ? (
-        <ArrowUpCircle className="text-emerald-500 shrink-0" size={18} />
-      ) : (
-        <ArrowDownCircle className="text-rose-500 shrink-0" size={18} />
-      )}
+      <TradeSideBadge side={log.side} />
       <span className="font-mono text-xs text-slate-500 dark:text-slate-400 w-36 shrink-0">
         {new Date(log.timestamp).toLocaleString(
           lang === "ko" ? "ko-KR" : "en-US",
@@ -280,17 +288,7 @@ function DesktopTradeRow({ log, lang }: { log: Log; lang: "ko" | "en" }) {
 function MobileTradeRow({ log, lang }: { log: Log; lang: "ko" | "en" }) {
   return (
     <li className="flex items-start gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/40">
-      {log.side === "buy" ? (
-        <ArrowUpCircle
-          className="text-emerald-500 shrink-0 mt-0.5"
-          size={16}
-        />
-      ) : (
-        <ArrowDownCircle
-          className="text-rose-500 shrink-0 mt-0.5"
-          size={16}
-        />
-      )}
+      <TradeSideBadge side={log.side} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">

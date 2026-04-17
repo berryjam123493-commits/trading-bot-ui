@@ -165,6 +165,8 @@ export const translations = {
     // 거래 로그 컬럼
     tlTime: "일시",
     tlSide: "매수/매도",
+    buySide: "매수",
+    sellSide: "매도",
     tlSymbol: "종목",
     tlPrice: "체결가",
     tlQty: "수량",
@@ -350,6 +352,8 @@ export const translations = {
 
     tlTime: "Time",
     tlSide: "Side",
+    buySide: "Buy",
+    sellSide: "Sell",
     tlSymbol: "Symbol",
     tlPrice: "Price",
     tlQty: "Qty",
