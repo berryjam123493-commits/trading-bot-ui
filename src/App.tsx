@@ -46,7 +46,8 @@ function AppInner() {
   const [deviceView, setDeviceView] = useState<DeviceView>(() =>
     window.matchMedia?.("(max-width: 767px)").matches ? "mobile" : "desktop"
   );
-  const [mainTab, setMainTab] = useState<MainTab>("dashboard");
+  // 앱 켜고 제일 처음 보는 화면은 포트폴리오
+  const [mainTab, setMainTab] = useState<MainTab>("portfolio");
   const [bots, setBots] = useState<Bot[]>(mockBots);
   const sortedBots = useMemo(() => sortBots(bots), [bots]);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(
@@ -141,7 +142,7 @@ def on_bar(symbol, history):
               />
             )}
             <main className="flex-1 flex flex-col min-w-0">
-              {mainTab === "dashboard" && (
+              {mainTab === "portfolio" && (
                 <PortfolioDashboard bots={bots} userName={USER_NAME} />
               )}
               {mainTab === "bots" && selectedBot && (

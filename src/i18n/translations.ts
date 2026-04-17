@@ -11,7 +11,7 @@ export const translations = {
     expandSidebar: "사이드바 펼치기",
 
     // 사이드바
-    tabDashboard: "포트폴리오",
+    tabPortfolio: "포트폴리오",
     tabBots: "자동매매 봇",
     tabBacktest: "백테스팅",
     addBot: "봇 추가",
@@ -232,7 +232,7 @@ export const translations = {
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
 
-    tabDashboard: "Portfolio",
+    tabPortfolio: "Portfolio",
     tabBots: "Trading Bots",
     tabBacktest: "Backtesting",
     addBot: "Add Bot",
