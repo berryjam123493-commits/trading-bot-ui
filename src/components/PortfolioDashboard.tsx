@@ -897,33 +897,35 @@ function AssetBreakdownPanel({
             if (!slot) return <g />;
             const item = pieData[props.index];
             const isCash = item.key === CASH_KEY;
+            const sliceColor = fillFor(item.key);
             const { cx, cy, outerRadius } = props;
             const startX = cx + outerRadius * slot.sx;
             const startY = cy + outerRadius * slot.sy;
-            const labelX =
-              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 14);
+            // 연결선은 직각으로만 꺾이는 L 모양 (1번 꺾임):
+            // 슬라이스 가장자리 → 같은 Y 에서 세로 기둥까지 수평 → 라벨 Y 까지 수직
+            const columnX =
+              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 10);
             const labelY = cy + slot.adjustedSy * (outerRadius + 10);
-            const connectorEndX =
-              labelX - (slot.side === "right" ? 3 : -3);
+            const textX =
+              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 14);
             const anchor = slot.side === "right" ? "start" : "end";
             return (
               <g key={`lbl-${item.key}`}>
                 <polyline
-                  points={`${startX},${startY} ${connectorEndX},${labelY}`}
+                  points={`${startX},${startY} ${columnX},${startY} ${columnX},${labelY}`}
                   stroke="#334155"
                   strokeWidth={0.6}
                   fill="none"
                 />
                 <text
-                  x={labelX}
+                  x={textX}
                   y={labelY}
                   dy={3}
                   textAnchor={anchor}
-                  fontSize={8}
+                  fontSize={9}
+                  fill={sliceColor}
                   className={
-                    isCash
-                      ? "fill-slate-500 dark:fill-slate-400"
-                      : "fill-slate-600 dark:fill-slate-300 cursor-pointer hover:fill-brand-600 dark:hover:fill-brand-400"
+                    isCash ? undefined : "cursor-pointer hover:opacity-70"
                   }
                   style={
                     isCash
