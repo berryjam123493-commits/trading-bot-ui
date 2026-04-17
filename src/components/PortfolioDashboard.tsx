@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Ruler,
   Sigma,
+  BarChart3,
 } from "lucide-react";
 import { useI18n } from "../i18n/context";
 import { useIsMobile } from "../device/context";
@@ -40,11 +41,12 @@ interface Props {
 }
 
 /**
- * 메인 시계열 차트에 겹쳐 표시할 오버레이들.
- * 기본은 바 그래프이며, 여기 항목들은 모두 켜짐/꺼짐 토글 가능 & 중복 선택 가능.
+ * 메인 시계열 차트에 겹쳐 표시할 오버레이들. 전부 다 껏다 켰다 토글 가능 & 중복 선택 가능.
+ * (바 그래프도 다른 옵션과 동일하게 토글)
  */
-type Overlay = "line" | "dashed" | "area" | "linear" | "distance";
+type Overlay = "bar" | "line" | "dashed" | "area" | "linear" | "distance";
 type AssetSelection = "all" | string;
+type TimeUnit = "day" | "week" | "month" | "year";
 
 const COLORS = [
   "#2563eb",
@@ -64,7 +66,9 @@ export function PortfolioDashboard({ bots, userName }: Props) {
   const isMobile = useIsMobile();
 
   const [asset, setAsset] = useState<AssetSelection>("all");
-  const [overlays, setOverlays] = useState<Set<Overlay>>(new Set());
+  // 기본값: 라인만 켜짐 → 바가 가리지 않아 기준선/편차 같은 새 기능이 잘 보임
+  const [overlays, setOverlays] = useState<Set<Overlay>>(new Set(["line"]));
+  const [timeUnit, setTimeUnit] = useState<TimeUnit>("day");
 
   const portfolio = useMemo(() => computePortfolio(bots), [bots]);
   const assetDetail = useMemo(
@@ -81,11 +85,18 @@ export function PortfolioDashboard({ bots, userName }: Props) {
     });
   };
 
-  // 메인 차트 데이터 — 시간 x, 자산의 양 y
-  const timeSeriesData =
-    asset === "all"
-      ? portfolio.combinedEquityCurve
-      : assetDetail?.valueOverTime ?? [];
+  // 메인 차트 데이터 — 시간 x, 자산의 양 y (최초 ~ 현재 전체 기간, 시간 단위만 조정)
+  const rawTimeSeries = useMemo(
+    () =>
+      asset === "all"
+        ? portfolio.combinedEquityCurve
+        : assetDetail?.valueOverTime ?? [],
+    [asset, portfolio.combinedEquityCurve, assetDetail]
+  );
+  const timeSeriesData = useMemo(
+    () => aggregateByTimeUnit(rawTimeSeries, timeUnit),
+    [rawTimeSeries, timeUnit]
+  );
 
   const primaryColor = asset === "all" ? "#2563eb" : "#10b981";
 
@@ -128,6 +139,7 @@ export function PortfolioDashboard({ bots, userName }: Props) {
           symbols={portfolio.allTradedSymbols}
           onChange={(v) => setAsset(v)}
         />
+        <TimeUnitSelector value={timeUnit} onChange={setTimeUnit} />
         <OverlayToggles values={overlays} onToggle={toggleOverlay} />
       </div>
 
@@ -354,6 +366,45 @@ function AssetSelector({
   );
 }
 
+function TimeUnitSelector({
+  value,
+  onChange,
+}: {
+  value: TimeUnit;
+  onChange: (v: TimeUnit) => void;
+}) {
+  const { t } = useI18n();
+  const items: { key: TimeUnit; label: string }[] = [
+    { key: "day", label: t("timeUnitDay") },
+    { key: "week", label: t("timeUnitWeek") },
+    { key: "month", label: t("timeUnitMonth") },
+    { key: "year", label: t("timeUnitYear") },
+  ];
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-semibold tracking-wider uppercase text-slate-400 dark:text-slate-500">
+        {t("timeUnitLabel")}
+      </label>
+      <div className="inline-flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-0.5">
+        {items.map((it) => (
+          <button
+            key={it.key}
+            type="button"
+            onClick={() => onChange(it.key)}
+            className={`px-2.5 py-1 text-[11px] font-medium rounded transition ${
+              value === it.key
+                ? "bg-brand-600 text-white"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            }`}
+          >
+            {it.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function OverlayToggles({
   values,
   onToggle,
@@ -363,6 +414,7 @@ function OverlayToggles({
 }) {
   const { t } = useI18n();
   const items: { key: Overlay; label: string; icon: React.ReactNode; title: string }[] = [
+    { key: "bar", label: t("chartBar"), icon: <BarChart3 size={12} />, title: t("chartBar") },
     { key: "line", label: t("chartLine"), icon: <LineIcon size={12} />, title: t("chartLine") },
     { key: "dashed", label: t("chartDashed"), icon: <Minus size={12} />, title: t("chartDashed") },
     { key: "area", label: t("chartArea"), icon: <TrendingUp size={12} />, title: t("chartArea") },
@@ -495,15 +547,27 @@ function MainTimeSeriesChart({
               content={<OverlayTooltip overlays={overlays} />}
             />
 
-            {/* 기본 바 (항상 표시) */}
-            <Bar
+            {/* y축/툴팁 앵커용 (투명). 어떤 오버레이가 꺼져있어도 축/호버는 작동 */}
+            <Line
               dataKey="equity"
-              fill={color}
-              fillOpacity={0.55}
-              radius={[3, 3, 0, 0]}
-              maxBarSize={isMobile ? 18 : 26}
+              stroke="transparent"
+              dot={false}
+              activeDot={false}
               isAnimationActive={false}
+              legendType="none"
             />
+
+            {/* 오버레이: 바 */}
+            {overlays.has("bar") && (
+              <Bar
+                dataKey="equity"
+                fill={color}
+                fillOpacity={0.45}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={isMobile ? 18 : 26}
+                isAnimationActive={false}
+              />
+            )}
 
             {/* 오버레이: area */}
             {overlays.has("area") && (
@@ -565,7 +629,9 @@ function MainTimeSeriesChart({
       {/* 범례 (활성화된 오버레이만) */}
       {overlays.size > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
-          <LegendChip colorClass="bg-slate-400" label={t("chartBar")} />
+          {overlays.has("bar") && (
+            <LegendChip colorStyle={{ backgroundColor: color, opacity: 0.45 }} label={t("chartBar")} />
+          )}
           {overlays.has("line") && (
             <LegendChip colorStyle={{ backgroundColor: color }} label={t("chartLine")} />
           )}
@@ -978,4 +1044,53 @@ function fmtShort(v: number): string {
   if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
   if (abs >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
   return v.toFixed(0);
+}
+
+/**
+ * 시간 단위로 시계열을 요약.
+ * - day: 그대로
+ * - week/month/year: 같은 기간에 속하는 포인트 중 **마지막 값**을 대표값으로 사용 (기간 말 equity).
+ * 기간 키는 x축 라벨로 그대로 사용:
+ *   week  → "YYYY-Wnn" (ISO week)
+ *   month → "YYYY-MM"
+ *   year  → "YYYY"
+ */
+function aggregateByTimeUnit(
+  data: { date: string; equity: number }[],
+  unit: TimeUnit
+): { date: string; equity: number }[] {
+  if (unit === "day" || data.length === 0) return data;
+
+  const map = new Map<string, { date: string; equity: number }>();
+  for (const p of data) {
+    const key = bucketKey(p.date, unit);
+    // 같은 버킷이면 마지막 값으로 덮어쓰기 (data가 시간순이라고 가정)
+    map.set(key, { date: key, equity: p.equity });
+  }
+  return Array.from(map.values());
+}
+
+function bucketKey(dateStr: string, unit: TimeUnit): string {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const y = d.getFullYear();
+  if (unit === "year") return `${y}`;
+  if (unit === "month") {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+  // week: ISO week
+  const { isoYear, isoWeek } = isoWeekParts(d);
+  return `${isoYear}-W${String(isoWeek).padStart(2, "0")}`;
+}
+
+function isoWeekParts(date: Date): { isoYear: number; isoWeek: number } {
+  // ISO 8601: 목요일을 기준으로 그 해에 속한 주로 판별
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const isoYear = d.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const isoWeek = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return { isoYear, isoWeek };
 }
