@@ -811,7 +811,7 @@ function AssetBreakdownPanel({
 }) {
   const { t } = useI18n();
   const barHeight = isMobile ? 180 : 210;
-  const pieHeight = isMobile ? 210 : 255;
+  const pieHeight = isMobile ? 230 : 280;
 
   // 색상 피커 상태 (종목 티커 클릭 시 표시)
   const [pickerFor, setPickerFor] = useState<
@@ -892,12 +892,14 @@ function AssetBreakdownPanel({
             cy: number;
             outerRadius: number;
             index: number;
+            percent?: number;
           }) => {
             const slot = labelLayout.get(props.index);
             if (!slot) return <g />;
             const item = pieData[props.index];
             const isCash = item.key === CASH_KEY;
             const sliceColor = fillFor(item.key);
+            const pctText = `${((props.percent ?? 0) * 100).toFixed(1)}%`;
             const { cx, cy, outerRadius } = props;
             const startX = cx + outerRadius * slot.sx;
             const startY = cy + outerRadius * slot.sy;
@@ -920,9 +922,7 @@ function AssetBreakdownPanel({
                 <text
                   x={textX}
                   y={labelY}
-                  dy={3}
                   textAnchor={anchor}
-                  fontSize={9}
                   fill={sliceColor}
                   className={
                     isCash ? undefined : "cursor-pointer hover:opacity-70"
@@ -944,7 +944,14 @@ function AssetBreakdownPanel({
                     );
                   }}
                 >
-                  {item.name}
+                  {/* 종목명 (윗줄, 약간 더 진한 가중치) */}
+                  <tspan x={textX} dy={3} fontSize={9} fontWeight={600}>
+                    {item.name}
+                  </tspan>
+                  {/* 퍼센티지 (아랫줄, 작고 연하게) */}
+                  <tspan x={textX} dy={11} fontSize={7.5} fillOpacity={0.6}>
+                    {pctText}
+                  </tspan>
                 </text>
               </g>
             );
@@ -1473,7 +1480,8 @@ function computePieLabelLayout(
     });
   }
 
-  const minGap = 0.25;
+  // 2줄(종목명 + 퍼센티지) 라벨이 생겼고 사용자가 간격 더 넓혀 달라고 요청 → 0.25 → 0.38
+  const minGap = 0.38;
   for (const side of ["left", "right"] as const) {
     const sameSide = slots
       .filter((s) => s.side === side)
@@ -1485,7 +1493,7 @@ function computePieLabelLayout(
     }
     // 가장 아래 라벨이 너무 밀렸으면 전체를 위로 당겨 중앙에 가깝게
     if (sameSide.length > 0) {
-      const overflow = sameSide[sameSide.length - 1].adjustedSy - 1.25;
+      const overflow = sameSide[sameSide.length - 1].adjustedSy - 1.3;
       if (overflow > 0) {
         for (const s of sameSide) s.adjustedSy -= overflow;
       }
