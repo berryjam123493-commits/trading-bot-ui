@@ -901,23 +901,28 @@ function AssetBreakdownPanel({
             const sliceColor = fillFor(item.key);
             const pctText = `${((props.percent ?? 0) * 100).toFixed(1)}%`;
             const { cx, cy, outerRadius } = props;
+            // 슬라이스 가장자리(연결선 시작) = 파이의 자연 각도
             const startX = cx + outerRadius * slot.sx;
             const startY = cy + outerRadius * slot.sy;
-            // 연결선은 직각으로만 꺾이는 L 모양 (1번 꺾임):
-            // 슬라이스 가장자리 → 같은 Y 에서 세로 기둥까지 수평 → 라벨 Y 까지 수직
-            const columnX =
-              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 10);
-            const labelY = cy + slot.adjustedSy * (outerRadius + 10);
-            const textX =
-              cx + (slot.side === "right" ? 1 : -1) * (outerRadius + 14);
+            // 라벨은 파이 바로 바깥 원(반지름 = outerRadius + 14) 위에 배치.
+            // 겹칠 때만 동일 측에서 adjustedSy 로 각도를 미세 조정 → 좌/우가
+            // "1열 기둥"이 아닌 부채꼴 모양으로 자연스럽게 펼쳐져 파이에 가장
+            // 가깝게 붙음.
+            const labelRadius = outerRadius + 14;
+            const labelX = cx + labelRadius * slot.adjustedSx;
+            const labelY = cy + labelRadius * slot.adjustedSy;
             const anchor = slot.side === "right" ? "start" : "end";
+            const textX = labelX + (slot.side === "right" ? 3 : -3);
             return (
               <g key={`lbl-${item.key}`}>
-                <polyline
-                  points={`${startX},${startY} ${columnX},${startY} ${columnX},${labelY}`}
+                {/* 연결선: 슬라이스 가장자리 → 라벨 앵커까지 1직선 (꺾임 0) */}
+                <line
+                  x1={startX}
+                  y1={startY}
+                  x2={labelX}
+                  y2={labelY}
                   stroke="#334155"
                   strokeWidth={0.6}
-                  fill="none"
                 />
                 <text
                   x={textX}
@@ -1435,20 +1440,36 @@ function isoWeekParts(date: Date): { isoYear: number; isoWeek: number } {
 }
 
 /**
- * 파이 차트 라벨 위치 계산 — 같은 쪽(좌/우)에 몰린 라벨끼리 수직으로 겹치지 않게 분산.
- * sx/sy 는 반지름 1인 단위원 상의 방향 벡터 (12시 = (0,-1), 3시 = (1,0), 6시 = (0,1), 9시 = (-1,0)).
- * adjustedSy 는 동일 측에서 최소 간격(minGap)을 확보하도록 위→아래 순으로 누적 조정된 y.
- * (minGap 은 정규화된 단위 — 실제 픽셀 간격은 minGap × (outerRadius + 10).)
+ * 파이 차트 라벨 위치 계산.
+ * - sx/sy = 반지름 1인 단위원 상의 자연 방향 벡터 (12시=(0,-1), 3시=(1,0), 6시=(0,1), 9시=(-1,0)).
+ * - adjustedSx/adjustedSy = 라벨이 실제로 놓일 위치. 항상 단위원 위의 점이므로
+ *   실제 픽셀 좌표로 환산할 때 labelRadius 를 곱해도 절대 파이 내부로 들어가지 않는다.
+ *
+ * 겹치지 않게 하기 위해 동일 측(좌/우)의 라벨들만 Y 기준으로 정렬한 뒤 최소 간격(minGap)을
+ * 확보하도록 위→아래 누적 조정한다. 그 뒤 같은 원 위에서 X 를 재계산 → 라벨이
+ * "1열 기둥"으로 정렬되는 게 아니라 자연 각도에 가까운 부채꼴로 펼쳐진다.
  */
 function computePieLabelLayout(
   pieData: { value: number }[]
 ): Map<
   number,
-  { sx: number; sy: number; side: "left" | "right"; adjustedSy: number }
+  {
+    sx: number;
+    sy: number;
+    side: "left" | "right";
+    adjustedSx: number;
+    adjustedSy: number;
+  }
 > {
   const result = new Map<
     number,
-    { sx: number; sy: number; side: "left" | "right"; adjustedSy: number }
+    {
+      sx: number;
+      sy: number;
+      side: "left" | "right";
+      adjustedSx: number;
+      adjustedSy: number;
+    }
   >();
   const total = pieData.reduce((s, d) => s + d.value, 0);
   if (total <= 0) return result;
@@ -1458,6 +1479,7 @@ function computePieLabelLayout(
     sx: number;
     sy: number;
     side: "left" | "right";
+    adjustedSx: number;
     adjustedSy: number;
   };
   const slots: Slot[] = [];
@@ -1476,27 +1498,46 @@ function computePieLabelLayout(
       sx,
       sy,
       side: sx >= 0 ? "right" : "left",
+      adjustedSx: sx,
       adjustedSy: sy,
     });
   }
 
-  // 2줄(종목명 + 퍼센티지) 라벨이 생겼고 사용자가 간격 더 넓혀 달라고 요청 → 0.25 → 0.38
-  const minGap = 0.38;
+  // minGap: 정규화된 Y 상에서 라벨 간 최소 간격.
+  // 2줄 라벨이 ~20px, labelRadius ≈ outerRadius+14 ≈ 100 → 20/100 = 0.2 면 빠듯하게 안 겹침.
+  // X 도 같이 달라지므로(부채꼴) 0.22 로 약간만 여유.
+  const minGap = 0.22;
+  // 극단 각도에서 라벨이 파이 가장자리를 "스쳐" 텍스트가 잘리지 않도록 Y 를 클램프.
+  const maxAbsY = 0.92;
   for (const side of ["left", "right"] as const) {
     const sameSide = slots
       .filter((s) => s.side === side)
       .sort((a, b) => a.sy - b.sy);
+    if (sameSide.length === 0) continue;
+    // 위→아래로 훑으며 필요한 경우에만 밀어내림 (자연 sy 를 최대한 유지)
     let lastY = -Infinity;
     for (const s of sameSide) {
       s.adjustedSy = Math.max(lastY + minGap, s.sy);
       lastY = s.adjustedSy;
     }
-    // 가장 아래 라벨이 너무 밀렸으면 전체를 위로 당겨 중앙에 가깝게
-    if (sameSide.length > 0) {
-      const overflow = sameSide[sameSide.length - 1].adjustedSy - 1.3;
-      if (overflow > 0) {
-        for (const s of sameSide) s.adjustedSy -= overflow;
-      }
+    // 아래로 넘친 만큼 전체를 위로 당겨 중앙 균형 확보
+    const overflow = sameSide[sameSide.length - 1].adjustedSy - maxAbsY;
+    if (overflow > 0) {
+      for (const s of sameSide) s.adjustedSy -= overflow;
+    }
+    // 클램프: 양 끝이 단위원을 벗어나지 않도록
+    for (const s of sameSide) {
+      if (s.adjustedSy < -maxAbsY) s.adjustedSy = -maxAbsY;
+      if (s.adjustedSy > maxAbsY) s.adjustedSy = maxAbsY;
+    }
+    // 같은 원 위에서 X 를 재계산 → 라벨은 항상 outerRadius+labelGap 원 위.
+    // 각도가 아주 약간만 바뀌므로 연결선이 파이 내부로 휘어들어가지 않는다.
+    const sign = side === "right" ? 1 : -1;
+    for (const s of sameSide) {
+      const radius = Math.sqrt(
+        Math.max(0, 1 - s.adjustedSy * s.adjustedSy)
+      );
+      s.adjustedSx = sign * radius;
     }
   }
 
